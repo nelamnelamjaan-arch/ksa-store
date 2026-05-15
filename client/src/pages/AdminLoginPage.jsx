@@ -40,9 +40,9 @@ export default function AdminLoginPage() {
       <Link to="/" className="text-sm text-neon-cyan hover:underline">
         ← Home
       </Link>
-      <div className="mt-8 rounded-3xl border border-white/12 bg-gradient-to-br from-white/[0.09] to-white/[0.02] p-8 shadow-[0_12px_48px_rgba(0,0,0,0.45)] backdrop-blur-2xl">
-        <h1 className="font-display text-2xl font-bold text-white">Grand Admin</h1>
-        <p className="mt-2 text-sm text-white/55">Sign in as Kiran to access operations and Magic Import.</p>
+      <div className="mt-8 rounded-3xl border border-white/20 bg-white/10 p-8 shadow-[0_12px_48px_rgba(0,0,0,0.45)] backdrop-blur-lg">
+        <h1 className="font-display text-2xl font-bold text-white">Super Admin</h1>
+        <p className="mt-2 text-sm text-white/55">Sign in as Kiran — full marketplace control.</p>
         <form onSubmit={onSubmit} className="mt-8 space-y-4">
           <label className="block text-xs text-white/50">
             Username

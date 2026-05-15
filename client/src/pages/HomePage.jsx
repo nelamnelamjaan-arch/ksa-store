@@ -1,6 +1,42 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { motion, useReducedMotion } from "framer-motion";
 import ProductCard from "../components/ui/ProductCard.jsx";
+import CategoryNavBar from "../components/layout/CategoryNavBar.jsx";
+import { useStorefront } from "../context/StorefrontContext.jsx";
+import { geoFetch } from "../utils/geoFetch.js";
+import ShoppableReels from "../components/reels/ShoppableReels.jsx";
+
+/** High-margin featured verticals — homepage spotlight */
+const PROFIT_FEATURED = [
+  {
+    id: "desk",
+    title: "Aesthetic desk setups",
+    margin: "~40% margin",
+    blurb: "RGB lighting, glass mousepads, and premium workspace accents.",
+    browse: "/browse?q=desk+setup",
+    image:
+      "https://images.unsplash.com/photo-1593640408182-31c70c8268f5?auto=format&w=800&q=80",
+  },
+  {
+    id: "wearables",
+    title: "Smart wearables",
+    margin: "High search volume",
+    blurb: "Global-edition watches — Pakistan & Middle East demand.",
+    browse: "/browse?q=smart+watch",
+    image:
+      "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&w=800&q=80",
+  },
+  {
+    id: "skincare",
+    title: "Imported skin care",
+    margin: "Premium daily needs",
+    blurb: "Korean beauty & K-beauty routines with luxury positioning.",
+    browse: "/browse?q=korean+beauty",
+    image:
+      "https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&w=800&q=80",
+  },
+];
 
 const HERO_POSTER =
   "https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&w=1920&q=85";
@@ -38,9 +74,45 @@ const MOCK_PRODUCTS = [
   },
 ];
 
+function mapApiProduct(p, formatMoney) {
+  const price =
+    typeof formatMoney === "function" && p.ksaPrice != null
+      ? formatMoney(p.ksaPrice)
+      : p.ksaPrice != null
+        ? `${p.ksaPrice} SAR`
+        : "";
+  return {
+    _id: p._id,
+    title: p.title,
+    price,
+    tag: "Featured",
+    image: p.images?.[0] || "",
+    lastPriceScrapedAt: p.last_price_scraped_at,
+    stockStatus: p.storeStockStatus,
+    category: p.category,
+    sourceType: p.sourceType,
+    sourcePlatform: p.source_platform,
+    originCountry: p.origin_country,
+    priceComparisonAvailable: p.priceComparisonAvailable,
+  };
+}
+
 export default function HomePage() {
   const reduceMotion = useReducedMotion();
+  const { format: formatMoney, hero, country } = useStorefront();
   const [videoFailed, setVideoFailed] = useState(false);
+  const [featured, setFeatured] = useState(MOCK_PRODUCTS);
+
+  useEffect(() => {
+    geoFetch("/api/products/featured?limit=8")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((rows) => {
+        if (Array.isArray(rows) && rows.length > 0) {
+          setFeatured(rows.map((p) => mapApiProduct(p, formatMoney)));
+        }
+      })
+      .catch(() => {});
+  }, [formatMoney, country]);
 
   return (
     <>
@@ -82,18 +154,18 @@ export default function HomePage() {
           >
             <p className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/[0.1] bg-white/[0.06] px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.25em] text-white/55 backdrop-blur-xl">
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-neon-cyan shadow-[0_0_14px_#00e5ff]" />
-              KSA Store · Private access retail
+              {hero?.badge || "KSA Store · Private access retail"}
             </p>
 
             <h1 className="font-display text-4xl font-extrabold leading-[1.08] tracking-tight text-white sm:text-5xl md:text-6xl lg:text-[3.5rem] lg:leading-[1.05]">
-              World&apos;s Luxury
+              {hero?.title || "World's Luxury"}
               <br />
-              <span className="text-gradient-vip">at Your Doorstep</span>
+              <span className="text-gradient-vip">{hero?.titleAccent || "at Your Doorstep"}</span>
             </h1>
 
             <p className="mx-auto mt-7 max-w-2xl text-base leading-relaxed text-white/60 sm:text-lg">
-              A calmer, more considered marketplace — curated vendors, invisible logistics,
-              and a checkout experience worthy of the Gulf&apos;s most discerning clients.
+              {hero?.subtitle ||
+                "A calmer, more considered marketplace — curated vendors, invisible logistics, and a checkout experience worthy of the Gulf's most discerning clients."}
             </p>
           </motion.div>
 
@@ -112,6 +184,8 @@ export default function HomePage() {
           </motion.div>
         </div>
       </section>
+
+      <ShoppableReels />
 
       <motion.section
         className="relative z-10 border-b border-white/[0.06] bg-charcoal-925/80 py-16 backdrop-blur-sm"
@@ -151,9 +225,66 @@ export default function HomePage() {
         </div>
       </motion.section>
 
-      <section className="relative z-10 mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
+      <section className="relative z-10 mx-auto max-w-7xl border-b border-white/[0.06] px-4 py-16 sm:px-6 lg:px-8">
         <motion.div
-          className="mb-12 text-center"
+          className="mb-10 text-center"
+          initial={reduceMotion ? false : { opacity: 0, y: 16 }}
+          whileInView={reduceMotion ? false : { opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+        >
+          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-neon-violet/90">
+            Highest earning categories
+          </p>
+          <h2 className="mt-3 font-display text-2xl font-bold text-white sm:text-3xl">
+            Featured for <span className="text-gradient-vip">maximum profit</span>
+          </h2>
+        </motion.div>
+        <div className="grid gap-6 sm:grid-cols-3">
+          {PROFIT_FEATURED.map((cat, i) => (
+            <motion.div
+              key={cat.id}
+              initial={reduceMotion ? false : { opacity: 0, y: 20 }}
+              whileInView={reduceMotion ? false : { opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.08, duration: 0.5 }}
+            >
+              <Link
+                to={cat.browse}
+                className="group glass-panel block overflow-hidden rounded-2xl transition hover:-translate-y-1"
+              >
+                <motion.div
+                  className="aspect-[4/3] overflow-hidden bg-charcoal-900"
+                  whileHover={{ scale: 1.03 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 24 }}
+                >
+                  <img
+                    src={cat.image}
+                    alt={cat.title}
+                    className="h-full w-full object-cover opacity-90 transition group-hover:opacity-100"
+                    loading="lazy"
+                  />
+                </motion.div>
+                <motion.div
+                  className="p-5"
+                  initial={false}
+                  whileHover={{ x: 2 }}
+                >
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-neon-cyan">
+                    {cat.margin}
+                  </span>
+                  <h3 className="mt-1 font-display text-lg font-semibold text-white">{cat.title}</h3>
+                  <p className="mt-2 text-sm text-white/50">{cat.blurb}</p>
+                </motion.div>
+              </Link>
+            </motion.div>
+          ))}
+        </div>
+      </section>
+
+      <section className="relative z-10 mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
+        <CategoryNavBar />
+        <motion.div
+          className="mb-12 mt-10 text-center"
           initial={reduceMotion ? false : { opacity: 0, y: 16 }}
           whileInView={reduceMotion ? false : { opacity: 1, y: 0 }}
           viewport={{ once: true }}
@@ -172,8 +303,8 @@ export default function HomePage() {
         </motion.div>
 
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {MOCK_PRODUCTS.map((p, i) => (
-            <ProductCard key={p.title} {...p} index={i} />
+          {featured.map((p, i) => (
+            <ProductCard key={p._id || p.title} {...p} index={i} />
           ))}
         </div>
       </section>

@@ -3,12 +3,17 @@ import { Link } from "react-router-dom";
 import { GoogleLogin } from "@react-oauth/google";
 import LogoKSA from "../brand/LogoKSA.jsx";
 import CountrySwitcher from "./CountrySwitcher.jsx";
+import LocationBadge from "./LocationBadge.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { isKiranGrandAdmin } from "../../utils/kiranAdmin.js";
 
 const navLinks = [
   { label: "Discover", to: "/" },
+  { label: "Jewellery", to: "/browse?catalog_key=jewellery", accent: "gold" },
+  { label: "Gourmet", to: "/gourmet", accent: "gourmet" },
+  { label: "Makeup", to: "/browse?catalog_key=makeup", accent: "rose" },
   { label: "Browse", to: "/browse" },
+  { label: "Track shipment", to: "/track" },
   { label: "AI Concierge", to: "/concierge" },
   { label: "About", to: "/about" },
   { label: "Privacy", to: "/privacy" },
@@ -121,7 +126,15 @@ export default function Navbar() {
             <li key={link.label}>
               <Link
                 to={link.to}
-                className="rounded-xl px-3.5 py-2 text-sm font-medium text-white/55 transition hover:bg-white/[0.05] hover:text-white"
+                className={`rounded-xl px-3.5 py-2 text-sm font-medium transition hover:bg-white/[0.05] ${
+                  link.accent === "gourmet"
+                    ? "text-emerald-300/90 hover:text-amber-200"
+                    : link.accent === "gold"
+                      ? "text-amber-200/90 hover:text-amber-100"
+                      : link.accent === "rose"
+                        ? "text-pink-200/90 hover:text-pink-100"
+                        : "text-white/55 hover:text-white"
+                }`}
               >
                 {link.label}
               </Link>
@@ -130,6 +143,7 @@ export default function Navbar() {
         </ul>
 
         <div className="ml-auto flex items-center gap-2 sm:gap-3">
+          <LocationBadge />
           <CountrySwitcher />
           {loading && !user ? (
             <span className="hidden text-xs text-white/40 sm:inline">…</span>

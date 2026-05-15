@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   postGoogleLogin,
   postAdminLogin,
+  postSellerLogin,
   getMe,
   patchMe,
   getFamilyNeeds,
@@ -12,6 +13,7 @@ const router = Router();
 
 router.post("/google", postGoogleLogin);
 router.post("/login", postAdminLogin);
+router.post("/seller-login", postSellerLogin);
 router.get("/me", requireUser, getMe);
 router.patch("/me", requireUser, patchMe);
 router.get("/family-needs", requireUser, getFamilyNeeds);

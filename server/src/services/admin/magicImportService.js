@@ -15,10 +15,13 @@ import {
   computeImportBaseSarAndFxRate,
   connectorMarkupPercent,
 } from "../external/importProductPipeline.js";
+import { resolveImportCategoryForUrl } from "../../utils/catalog/importCategoryResolver.js";
 import { firePriceDropAlerts } from "../notifications/priceDropNotifier.js";
 import { slugifyProductTitle, ensureUniqueProductSlug } from "../../utils/productSlug.js";
 import { enqueueProductSeoJob } from "../../queues/productQueues.js";
 import { processProductSeoInBackground } from "../seo/productSeoJob.js";
+import { enqueueProductVideoJob } from "../../queues/productQueues.js";
+import { processProductVideoInBackground } from "../media/productVideoJob.js";
 
 function normalizeSourceType(raw) {
   const v = String(raw || "other").toLowerCase();
@@ -96,11 +99,19 @@ export async function buildMagicImportPreview(url, settings, hooks) {
 
   const sourceType = normalizeSourceType(scraped.sourceType);
   const reviewPending = (scraped.watermarkFlags?.length ?? 0) > 0;
+  const { getImportToneKeyFromCategoryDoc } = await import(
+    "../../utils/catalog/categoryAiPrompts.js"
+  );
+  const toneKey = getImportToneKeyFromCategoryDoc(category);
+
   await hooks?.onProgress?.(50, "ai", "VIP AI listing rewrite…");
-  const ai = await enrichCopyForConnectorImport(scraped);
+  const ai = await enrichCopyForConnectorImport(scraped, { category, toneKey });
   await hooks?.onProgress?.(65, "images", "Cloudinary CDN ingest (f_auto / q_auto)…");
 
-  let imageUrls = await prepareImagesForCatalog(scraped.images ?? []);
+  let imageUrls = await prepareImagesForCatalog(scraped.images ?? [], {
+    toneKey,
+    hiResImages: scraped.hiResImages || [],
+  });
   if (imageUrls.length === 0 && scraped.images?.length) {
     imageUrls = scraped.images;
   }
@@ -289,6 +300,9 @@ export async function commitMagicImportProduct({ preview, overrides = {}, shopId
 
   const queuedSeo = await enqueueProductSeoJob(product._id);
   if (!queuedSeo) processProductSeoInBackground(product._id);
+
+  const queuedVideo = await enqueueProductVideoJob(product._id);
+  if (!queuedVideo) processProductVideoInBackground(product._id);
 
   const out = await Product.findById(product._id)
     .populate("category", "name slug group marketplace_vertical catalog_key")

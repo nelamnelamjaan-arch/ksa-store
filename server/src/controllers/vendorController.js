@@ -12,7 +12,7 @@ function round2(n) {
 }
 
 async function getVendorShop(req) {
-  if (req.user.role !== USER_ROLES.VENDOR_ADMIN) {
+  if (req.user.role !== USER_ROLES.SELLER && req.user.role !== "vendor_admin") {
     const err = new Error("Vendor access only");
     err.status = 403;
     throw err;

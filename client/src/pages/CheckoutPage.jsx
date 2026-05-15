@@ -4,6 +4,8 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { PrescriptionUpload } from "../components/marketplace/PrescriptionUpload.jsx";
 import FacilitatorNote from "../components/legal/FacilitatorNote.jsx";
 import StripeGlassCheckoutForm from "../components/checkout/StripeGlassCheckoutForm.jsx";
+import UniversalCheckoutGlass from "../components/checkout/UniversalCheckoutGlass.jsx";
+import TrustBadges from "../components/trust/TrustBadges.jsx";
 
 const emptyAddress = {
   fullName: "",
@@ -186,9 +188,9 @@ export default function CheckoutPage() {
       </Link>
       <h1 className="mt-6 font-display text-2xl font-bold text-white">Checkout</h1>
       <p className="mt-2 text-sm text-white/55">
-        Primary checkout uses Stripe Elements on this page. You can still open the classic Stripe-hosted
-        page if you prefer.
+        Universal Checkout: PayPal, bank transfer (PK/KSA), or COD. Stripe card checkout is available below.
       </p>
+      <TrustBadges className="mt-6" compact />
 
       <div className="mt-8 space-y-6">
         <FacilitatorNote className="mt-2" />
@@ -238,6 +240,20 @@ export default function CheckoutPage() {
         </div>
 
         <PrescriptionUpload uploads={prescriptionRows} onUploadsChange={setPrescriptionRows} />
+
+        <UniversalCheckoutGlass
+          token={token}
+          user={user}
+          shopId={shopId}
+          productId={productId}
+          quantity={quantity}
+          address={address}
+          setAddress={setAddress}
+          facilitatorConsent={facilitatorConsent}
+          setFacilitatorConsent={setFacilitatorConsent}
+        />
+
+        <p className="text-center text-xs uppercase tracking-widest text-white/30">or pay with card</p>
 
         <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
           <input

@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { User } from "../models/User.js";
 import { verifyAuthToken } from "../services/auth/jwt.js";
+import { normalizeRole } from "../utils/rbac/roles.js";
 
 /**
  * Authenticates via `Authorization: Bearer <JWT>` (Google OAuth session),
@@ -50,11 +51,13 @@ export async function requireUser(req, res, next) {
 }
 
 export function requireRoles(...roles) {
+  const allowed = new Set(roles.flatMap((r) => [r, normalizeRole(r)]));
   return (req, res, next) => {
     if (!req.user) {
       return res.status(401).json({ message: "Unauthorized" });
     }
-    if (!roles.includes(req.user.role)) {
+    const role = normalizeRole(req.user.role);
+    if (!allowed.has(role) && !allowed.has(req.user.role)) {
       return res.status(403).json({ message: "Insufficient role" });
     }
     next();

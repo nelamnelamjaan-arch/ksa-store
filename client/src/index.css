@@ -25,6 +25,15 @@
   .glass-nav {
     @apply border-b border-white/[0.08] bg-charcoal-950/55 shadow-[0_4px_30px_rgba(0,0,0,0.35)] backdrop-blur-2xl backdrop-saturate-150;
   }
+  .reels-scroll {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    scroll-behavior: smooth;
+    overscroll-behavior-y: contain;
+  }
+  .reels-scroll::-webkit-scrollbar {
+    display: none;
+  }
   .glow-ring {
     box-shadow:
       0 0 0 1px rgba(0, 229, 255, 0.35),
@@ -75,4 +84,38 @@
     animation: none;
     box-shadow: 0 0 20px rgba(0, 229, 255, 0.35);
   }
+}
+
+/* VIP Jewellery product cards — golden glass border + hover glow */
+.jewellery-card-vip {
+  @apply relative overflow-hidden rounded-2xl backdrop-blur-md bg-white/5;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+}
+.jewellery-card-vip::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 2px;
+  background: linear-gradient(135deg, #facc15, #fde68a, #ca8a04);
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+.jewellery-card-vip:hover {
+  box-shadow:
+    0 0 28px rgba(250, 204, 21, 0.35),
+    0 12px 40px rgba(0, 0, 0, 0.45);
+}
+.jewellery-card-vip:hover .jewellery-card-vip__image {
+  filter: brightness(1.08) contrast(1.05);
+  transform: scale(1.04);
+}
+.jewellery-card-vip__image {
+  @apply transition duration-500 ease-out;
 }

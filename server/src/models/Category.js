@@ -6,6 +6,7 @@ export const MARKETPLACE_VERTICALS = Object.freeze({
   ESSENTIALS: "essentials",
   HEALTHCARE: "healthcare",
   HOME_NEEDS: "home_needs",
+  GOURMET_FOOD: "gourmet_food",
 });
 
 /** Fine-grained catalogue key (used for margin rules & scraper hints) */
@@ -21,6 +22,15 @@ export const CATALOG_KEYS = Object.freeze({
   DECOR: "decor",
   GENERAL: "general",
   DAILY_ESSENTIALS: "daily_essentials",
+  GOURMET_FOOD: "gourmet_food",
+  JEWELLERY: "jewellery",
+  MAKEUP: "makeup",
+  SKINCARE: "skincare",
+  SHOES: "shoes",
+  DRESSES_FEMALE: "dresses_female",
+  DRESSES_MALE: "dresses_male",
+  DRESSES_KIDS: "dresses_kids",
+  ELECTRONICS: "electronics",
 });
 
 const categorySchema = new mongoose.Schema(

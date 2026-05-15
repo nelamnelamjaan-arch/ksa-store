@@ -4,6 +4,7 @@ import { signAuthToken } from "../services/auth/jwt.js";
 import { verifyPassword } from "../services/auth/password.js";
 import { isKiranGrandAdmin, KIRAN_USERNAME } from "../services/auth/kiranAdmin.js";
 import { buildFamilyNeedsRecommendations } from "../services/catalog/familyNeedsRecommendations.js";
+import { isApprovedSellerUser, normalizeRole } from "../utils/rbac/roles.js";
 
 const FAMILY_REL = new Set(["self", "spouse", "child", "parent", "grandparent", "other"]);
 
@@ -15,7 +16,8 @@ function publicUserDoc(u) {
     email: o.email,
     username: o.username || "",
     name: o.name,
-    role: o.role,
+    role: normalizeRole(o.role),
+    isApproved: Boolean(o.isApproved),
     isKiranAdmin: isKiranGrandAdmin(o),
     picture: o.picture || "",
     ksaCoins: Math.max(0, Math.floor(Number(o.ksaCoins) || 0)),
@@ -100,6 +102,47 @@ export async function postGoogleLogin(req, res, next) {
  * POST /api/auth/login
  * Body: { username: string, password: string }
  */
+/**
+ * POST /api/auth/seller-login
+ * Body: { username?: string, email?: string, password: string }
+ */
+export async function postSellerLogin(req, res, next) {
+  try {
+    const username = String(req.body?.username || "").trim();
+    const email = String(req.body?.email || "")
+      .toLowerCase()
+      .trim();
+    const password = String(req.body?.password || "");
+    if ((!username && !email) || !password) {
+      return res.status(400).json({ message: "username or email, and password are required" });
+    }
+
+    const query = username
+      ? { $or: [{ username }, { email: username.toLowerCase() }] }
+      : { email };
+
+    const user = await User.findOne({
+      ...query,
+      role: { $in: [USER_ROLES.SELLER, "vendor_admin"] },
+    });
+    if (!user || !verifyPassword(password, user.passwordHash)) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+    if (!isApprovedSellerUser(user)) {
+      return res.status(403).json({
+        message: "Seller account pending Super Admin approval",
+        isApproved: false,
+      });
+    }
+
+    const u = user.toObject();
+    const token = signAuthToken(u);
+    res.json({ token, user: publicUserDoc(u) });
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function postAdminLogin(req, res, next) {
   try {
     const username = String(req.body?.username || "").trim();
@@ -107,14 +150,23 @@ export async function postAdminLogin(req, res, next) {
     if (!username || !password) {
       return res.status(400).json({ message: "username and password are required" });
     }
-    if (username.toLowerCase() !== KIRAN_USERNAME.toLowerCase()) {
+
+    const adminUsername = String(process.env.ADMIN_USERNAME || KIRAN_USERNAME).trim();
+    if (username.toLowerCase() !== adminUsername.toLowerCase()) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
     const user = await User.findOne({
       $or: [{ username: KIRAN_USERNAME }, { name: KIRAN_USERNAME }, { email: "kiran@ksa.store" }],
     });
-    if (!user || !verifyPassword(password, user.passwordHash)) {
+    if (!user) {
+      return res.status(401).json({ message: "Admin account not seeded — restart API with MongoDB" });
+    }
+
+    const envPass = process.env.ADMIN_PASSWORD || process.env.KIRAN_ADMIN_PASSWORD;
+    const envMatch = Boolean(envPass && password === envPass);
+    const hashMatch = verifyPassword(password, user.passwordHash);
+    if (!envMatch && !hashMatch) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
     if (!isKiranGrandAdmin(user)) {

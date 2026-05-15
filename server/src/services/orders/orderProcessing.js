@@ -11,6 +11,13 @@ import { computeVendorPayoutAndPlatformSplits } from "../revenue/commissionCalcu
 import { recordOrderRevenueLedger } from "../revenue/ledgerService.js";
 import { deriveSourceVendorLabel } from "../../utils/legal/sourceVendorLabel.js";
 import { computeCoinsEarned, resolveCoinRedemption } from "../rewards/ksaCoins.js";
+import {
+  assertProfitFirstPrice,
+  buildMagicImportSnapshot,
+} from "../checkout/profitFirstPricing.js";
+import { notifyAdminOrderFulfillment } from "./fulfillmentNotify.js";
+import { executeProfitSplitAfterPayment } from "../payments/profitSplitService.js";
+import { validatePrescriptionUploads } from "../compliance/prescriptionOcr.js";
 
 function round2(n) {
   return Math.round(Number(n) * 100) / 100;
@@ -50,7 +57,7 @@ function lineNeedsRxReview(category, product) {
 }
 
 /**
- * @param {{ customerId: string, shopId: string, items: { productId: string, quantity: number }[], deliveryAddress: object, paymentProvider: 'stripe'|'coinbase', prescriptionUploads?: unknown, facilitatorConsent?: boolean, ghostMode?: boolean, redeemCoins?: number }} input
+ * @param {{ customerId: string, shopId: string, items: { productId: string, quantity: number }[], deliveryAddress: object, paymentProvider: 'stripe'|'coinbase'|'paypal'|'bank_transfer'|'cod', prescriptionUploads?: unknown, facilitatorConsent?: boolean, ghostMode?: boolean, redeemCoins?: number, displayCurrency?: string, displayAmount?: number }} input
  */
 export async function createGhostCheckoutOrder(input) {
   const {
@@ -63,6 +70,8 @@ export async function createGhostCheckoutOrder(input) {
     facilitatorConsent,
     ghostMode,
     redeemCoins: redeemCoinsRaw = 0,
+    displayCurrency = "SAR",
+    displayAmount = 0,
   } = input;
 
   if (facilitatorConsent !== true) {
@@ -89,6 +98,7 @@ export async function createGhostCheckoutOrder(input) {
   let idx = 0;
   let prescriptionReviewRequired = false;
   let anyHyperlocal = false;
+  let anyPerishableFood = false;
 
   const ids = items
     .map((row) => row.productId)
@@ -129,14 +139,18 @@ export async function createGhostCheckoutOrder(input) {
     if (String(product.origin_type) === ORIGIN_TYPES.LOCAL_VENDOR) {
       anyHyperlocal = true;
     }
+    if (product.isPerishable || product.perishable || product.vipGourmetBadge) {
+      anyPerishableFood = true;
+    }
 
     const cat = catById.get(String(product.category));
     if (lineNeedsRxReview(cat, product)) {
       prescriptionReviewRequired = true;
     }
 
-    const unitKsa = product.ksaPrice;
-    const unitCost = product.originalPrice;
+    const profit = assertProfitFirstPrice(product);
+    const unitKsa = profit.finalPriceSAR;
+    const unitCost = profit.basePriceSAR;
     const lineTotal = round2(unitKsa * qty);
     const lineOriginal = round2(unitCost * qty);
 
@@ -197,10 +211,20 @@ export async function createGhostCheckoutOrder(input) {
   const seq = await nextSequence("globalOrderSerial");
   const ksaSerialGlobal = `KSA-GLOBAL-${String(seq).padStart(6, "0")}`;
 
+  let rxOcrPassed = null;
+  let rxOcrScans = [];
+  if (prescriptionReviewRequired && uploads.length > 0) {
+    const ocr = await validatePrescriptionUploads(uploads);
+    rxOcrScans = ocr.scans || [];
+    rxOcrPassed = ocr.passed === true;
+  }
+
   const compliance = {
     prescriptionReviewRequired,
     prescriptionUploads: uploads,
     rxReviewStatus: prescriptionReviewRequired ? "pending" : "not_required",
+    rxOcrPassed,
+    rxOcrScans,
   };
 
   const legal = {
@@ -212,6 +236,25 @@ export async function createGhostCheckoutOrder(input) {
   const source_store_name = lines[0]?.source_store_name_snapshot || "";
   const original_purchase_link = lines[0]?.original_purchase_link_snapshot || "";
 
+  const anchorProduct = prodById.get(String(items[0]?.productId));
+  const magicImportSnapshot = anchorProduct
+    ? buildMagicImportSnapshot(anchorProduct, displayCurrency, displayAmount || subtotal)
+    : undefined;
+
+  const providerMap = {
+    coinbase: "coinbase",
+    paypal: "paypal",
+    bank_transfer: "bank_transfer",
+    cod: "cod",
+  };
+  const provider = providerMap[paymentProvider] || "stripe";
+  const rxBlocksPayment =
+    prescriptionReviewRequired && uploads.length > 0 && rxOcrPassed === false;
+  const paymentStatus =
+    provider === "bank_transfer" || provider === "cod" || rxBlocksPayment
+      ? "awaiting_review"
+      : "pending";
+
   const order = await Order.create({
     ksaSerialGlobal,
     customer: customerId,
@@ -222,9 +265,10 @@ export async function createGhostCheckoutOrder(input) {
     originalCostTotal,
     status: "pending",
     payment: {
-      provider: paymentProvider === "coinbase" ? "coinbase" : "stripe",
-      status: "pending",
+      provider,
+      status: paymentStatus,
     },
+    magicImportSnapshot,
     fulfillmentVault: {
       deliveryAddress,
       itemSources: vaultSources,
@@ -246,7 +290,29 @@ export async function createGhostCheckoutOrder(input) {
       coinsEarned: 0,
     },
     vip_tracking_step: 0,
+    fulfillmentPriority: anyPerishableFood ? "urgent" : "standard",
   });
+
+  if (provider === "bank_transfer" || provider === "cod") {
+    await notifyAdminOrderFulfillment(order, "pending");
+    try {
+      const { sendOrderConfirmationEmail } = await import("../email/emailService.js");
+      await sendOrderConfirmationEmail(order._id);
+    } catch (err) {
+      console.warn("[createGhostCheckoutOrder] order confirmation email:", err.message);
+    }
+  }
+
+  if (rxBlocksPayment) {
+    const err = new Error(
+      "Prescription verification requires Grand Admin approval before payment. Your order is saved — we will email you when you can complete checkout."
+    );
+    err.status = 403;
+    err.code = "RX_MANUAL_REVIEW_REQUIRED";
+    err.orderId = order._id.toString();
+    err.ksaSerialGlobal = order.ksaSerialGlobal;
+    throw err;
+  }
 
   return order;
 }
@@ -327,6 +393,25 @@ export async function finalizePaidOrder(orderId) {
         String(updated._id)
       );
     }
+  }
+
+  try {
+    await executeProfitSplitAfterPayment(updated._id, {
+      transactionId:
+        updated.payment?.paypalCaptureId ||
+        updated.payment?.stripePaymentIntentId ||
+        "",
+    });
+  } catch (err) {
+    console.warn("[finalizePaidOrder] profit split:", err.message);
+    await notifyAdminOrderFulfillment(updated, "confirmed");
+  }
+
+  try {
+    const { sendPaymentSuccessEmail } = await import("../email/emailService.js");
+    await sendPaymentSuccessEmail(updated._id);
+  } catch (err) {
+    console.warn("[finalizePaidOrder] payment success email:", err.message);
   }
 
   return { ok: true, orderId: updated._id.toString() };

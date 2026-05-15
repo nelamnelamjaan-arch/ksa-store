@@ -13,6 +13,7 @@ import { geoLocaleMiddleware } from "./middleware/geoLocale.js";
 import { currencyConversionMiddleware } from "./middleware/currencyConversion.js";
 import { startLocalVendorStockHeartbeat } from "./services/automation/localVendorStockHeartbeat.js";
 import { startGhostPurgeScheduler } from "./services/privacy/ghostPurgeScheduler.js";
+import { startCronJobs } from "./services/cronJobs.js";
 import { attachSocketIo } from "./socket/ioServer.js";
 import { registerHourlyProductSyncJob } from "./queues/productQueues.js";
 import { createKsaBullWorkers } from "./workers/productSync.processor.js";
@@ -92,6 +93,7 @@ async function bootstrap() {
       console.log("Local vendor stock heartbeat: hourly ping enabled.");
     }
     startGhostPurgeScheduler();
+    startCronJobs();
   });
 }
 

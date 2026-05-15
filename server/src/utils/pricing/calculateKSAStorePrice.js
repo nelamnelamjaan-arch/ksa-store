@@ -8,6 +8,7 @@ export const MOCK_FX_TO_SAR = Object.freeze({
   GBP: 4.75,
   AED: 1.02,
   PKR: 0.0135,
+  TRY: 0.12,
   SAR: 1,
 });
 

@@ -13,9 +13,16 @@ import walletRouter from "./wallet.js";
 import vendorRouter from "./vendor.js";
 import alertsRouter from "./alerts.js";
 import searchRouter from "./search.js";
-import { getClientContext } from "../controllers/clientContextController.js";
+import {
+  getClientContext,
+  postClientContextOverride,
+  listStorefrontRegions,
+} from "../controllers/clientContextController.js";
 import subscriptionsRouter from "./subscriptions.js";
 import importRouter from "./import.js";
+import sellerRouter from "./seller.js";
+import trackingRouter from "./tracking.js";
+import scraperRouter from "./scraper.js";
 
 const router = Router();
 
@@ -49,6 +56,8 @@ router.get("/", (_req, res) => {
 });
 
 router.get("/client-context", getClientContext);
+router.post("/client-context/override", postClientContextOverride);
+router.get("/client-context/regions", listStorefrontRegions);
 router.use("/alerts", alertsRouter);
 router.use("/search", searchRouter);
 
@@ -64,6 +73,9 @@ router.use("/checkout", checkoutRouter);
 router.use("/orders", ordersRouter);
 router.use("/wallet", walletRouter);
 router.use("/vendor", vendorRouter);
+router.use("/seller", sellerRouter);
 router.use("/subscriptions", subscriptionsRouter);
+router.use("/tracking", trackingRouter);
+router.use("/scraper", scraperRouter);
 
 export default router;

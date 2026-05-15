@@ -6,8 +6,34 @@ import {
   checkoutStripeIntent,
   postStripePaymentIntent,
 } from "../controllers/checkoutController.js";
+import {
+  getCheckoutConfig,
+  postUniversalCheckout,
+  postPayPalCreate,
+  postPayPalCapture,
+  postBankTransferReceipt,
+  uploadReceiptMiddleware,
+} from "../controllers/universalCheckoutController.js";
+import {
+  getSplitPaymentPreview,
+  postSplitPaymentCapture,
+} from "../controllers/splitPaymentController.js";
 
 const router = Router();
+
+router.get("/config", getCheckoutConfig);
+router.get("/split-payment/preview", getSplitPaymentPreview);
+router.post("/split-payment/capture", requireUser, postSplitPaymentCapture);
+
+router.post("/universal", requireUser, postUniversalCheckout);
+router.post("/paypal/create", requireUser, postPayPalCreate);
+router.post("/paypal/capture", requireUser, postPayPalCapture);
+router.post(
+  "/bank-transfer",
+  requireUser,
+  uploadReceiptMiddleware,
+  postBankTransferReceipt
+);
 
 router.post("/stripe", requireUser, checkoutStripe);
 router.post("/stripe-intent", requireUser, checkoutStripeIntent);

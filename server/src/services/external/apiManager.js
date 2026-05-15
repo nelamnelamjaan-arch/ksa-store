@@ -5,6 +5,7 @@
 
 import { URL } from "url";
 import { MOCK_FX_TO_SAR, convertToSAR } from "../../utils/pricing/calculateKSAStorePrice.js";
+import { fetchFixerRatesToSAR } from "../../utils/apiManager.js";
 import { memoryCacheGet, memoryCacheSet } from "../cache/memoryCache.js";
 import { flagImagesForReview } from "../../utils/imageWatermarkHeuristic.js";
 import { resolveDomainRules } from "../automation/domainMap.js";
@@ -26,44 +27,24 @@ function mockRatesToSar() {
 }
 
 /**
- * Frankfurter (ECB) — free, no API key. Builds SAR-per-unit for USD, EUR, AUD (+ GBP fallback).
- * Uses `from=SAR&to=USD,EUR,AUD` then inverts: 1 SAR = r USD → 1 USD = 1/r SAR.
+ * Live FX via Fixer.io (production keys) — USD/EUR/PKR/SAR etc. → SAR per 1 foreign unit.
  */
 async function fetchLiveFxRatesToSAR() {
   const cached = memoryCacheGet(FX_CACHE_KEY);
-  if (cached && typeof cached === "object") return cached;
+  if (cached && typeof cached === "object" && cached.SAR === 1) return cached;
 
-  const targets = "USD,EUR,AUD";
-  let ratesFromSar = null;
   try {
-    const res = await fetch(`https://api.frankfurter.app/latest?from=SAR&to=${targets}`, {
-      headers: { Accept: "application/json" },
-    });
-    if (res.ok) {
-      const data = await res.json();
-      const r = data?.rates || {};
-      const sarPerUnit = { SAR: 1 };
-      for (const code of ["USD", "EUR", "AUD"]) {
-        const v = Number(r[code]);
-        if (v > 0) {
-          sarPerUnit[code] = Math.round((1 / v) * 10000) / 10000;
-        }
-      }
-      if (sarPerUnit.USD) ratesFromSar = sarPerUnit;
-    }
+    const fixer = await fetchFixerRatesToSAR();
+    const rates = fixer?.rates || mockRatesToSar();
+    const out = { ...rates, _source: fixer?.source || "fixer" };
+    memoryCacheSet(FX_CACHE_KEY, out, FX_TTL_MS);
+    return out;
   } catch {
-    /* use mock */
+    const mock = mockRatesToSar();
+    mock._source = "mock";
+    memoryCacheSet(FX_CACHE_KEY, mock, FX_TTL_MS);
+    return mock;
   }
-
-  if (!ratesFromSar) {
-    ratesFromSar = mockRatesToSar();
-    ratesFromSar._source = "mock";
-  } else {
-    ratesFromSar._source = "frankfurter";
-  }
-
-  memoryCacheSet(FX_CACHE_KEY, ratesFromSar, FX_TTL_MS);
-  return ratesFromSar;
 }
 
 /**
@@ -117,14 +98,15 @@ Rules:
 
 /**
  * Gemini-only VIP rewrite (connector path). Falls back to null if no API key / error.
- * @param {{ title: string, description: string, sourceHint?: string }} input
+ * @param {{ title: string, description: string, sourceHint?: string, systemPrompt?: string }} input
  */
 export async function rewriteProductCopyVipGemini(input) {
   const title0 = String(input?.title || "").trim();
   const desc0 = String(input?.description || "").trim();
   const hint = input?.sourceHint ? `\nChannel (never mention): ${input.sourceHint}` : "";
+  const system = String(input?.systemPrompt || VIP_SYSTEM).trim();
 
-  const key = `${VIP_CACHE_PREFIX}${title0}\n${desc0}`;
+  const key = `${VIP_CACHE_PREFIX}${system.slice(0, 48)}\n${title0}\n${desc0}`;
   const cached = memoryCacheGet(key);
   if (cached?.title) return { ...cached, source: "cache" };
 
@@ -133,7 +115,7 @@ export async function rewriteProductCopyVipGemini(input) {
 
   const model = process.env.GEMINI_MODEL || "gemini-1.5-flash";
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
-  const userBlock = `${VIP_SYSTEM}\n\nOriginal title:\n${title0}\n\nOriginal description:\n${desc0}${hint}`;
+  const userBlock = `${system}\n\nAlso rewrite the title to match the VIP tone.\nOutput STRICT JSON only: { "title": string, "description": string, "metaTitle": string, "metaDescription": string, "keywords": string[] }.\n\nOriginal title:\n${title0}\n\nOriginal description:\n${desc0}${hint}`;
 
   const res = await fetch(url, {
     method: "POST",
@@ -141,7 +123,8 @@ export async function rewriteProductCopyVipGemini(input) {
     body: JSON.stringify({
       contents: [{ role: "user", parts: [{ text: userBlock }] }],
       generationConfig: {
-        temperature: 0.4,
+        temperature: 0.35,
+        maxOutputTokens: 1024,
         responseMimeType: "application/json",
       },
     }),
@@ -172,10 +155,117 @@ export async function rewriteProductCopyVipGemini(input) {
   return out;
 }
 
-function isAmazonHostname(host) {
+export function isAmazonHostname(host) {
   return String(host || "")
     .toLowerCase()
     .includes("amazon.");
+}
+
+export function isAmazonProductUrl(url) {
+  try {
+    return isAmazonHostname(new URL(url).hostname);
+  } catch {
+    return false;
+  }
+}
+
+const GEMINI_EXTRACT_INSTRUCTION = `Extract product title, price, image URL, and description from the page data.
+Rewrite the description in a VIP luxury tone. If the site is in another language, translate it to English.
+Remove all references to external marketplaces and sellers.
+Output STRICT JSON only:
+{
+  "title": string,
+  "description": string,
+  "price": number,
+  "currency": string (ISO 4217, e.g. USD, SAR, EUR),
+  "mainImageUrl": string,
+  "images": string[] (optional extra image URLs)
+}`;
+
+/**
+ * Gemini extraction from raw page HTML (global e-commerce sites).
+ * @param {{ url: string; htmlExcerpt: string; scrapeHint?: { title?: string; description?: string; priceCurrent?: number; currency?: string; images?: string[] } }} input
+ */
+export async function extractProductFromPageContentGemini(input) {
+  const apiKey = process.env.GOOGLE_AI_API_KEY || process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    const err = new Error("GEMINI_API_KEY is not configured");
+    err.status = 503;
+    throw err;
+  }
+
+  const url = String(input?.url || "").trim();
+  const html = String(input?.htmlExcerpt || "").slice(0, 100_000);
+  const hint = input?.scrapeHint || {};
+  const hintBlock = hint.title
+    ? `\nCheerio/meta hints (may be incomplete):\n${JSON.stringify(hint).slice(0, 4000)}`
+    : "";
+
+  const model = process.env.GEMINI_MODEL || "gemini-1.5-flash";
+  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+  const userText = `${GEMINI_EXTRACT_INSTRUCTION}
+
+Product page URL: ${url}
+${hintBlock}
+
+--- PAGE HTML (excerpt) ---
+${html}`;
+
+  const res = await fetch(apiUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ role: "user", parts: [{ text: userText }] }],
+      generationConfig: {
+        temperature: 0.35,
+        responseMimeType: "application/json",
+      },
+    }),
+  });
+
+  if (!res.ok) {
+    const err = new Error(`Gemini extraction failed (${res.status})`);
+    err.status = 502;
+    throw err;
+  }
+
+  const data = await res.json();
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  const raw = parseJsonObject(text);
+  if (!raw?.title) {
+    const err = new Error("Gemini could not extract product fields from this page");
+    err.status = 422;
+    throw err;
+  }
+
+  const price = Number(raw.price ?? hint.priceCurrent);
+  if (!Number.isFinite(price) || price <= 0) {
+    const err = new Error("Could not determine a valid product price");
+    err.status = 422;
+    throw err;
+  }
+
+  const images = [];
+  const main = String(raw.mainImageUrl || "").trim();
+  if (main) images.push(main);
+  if (Array.isArray(raw.images)) {
+    for (const u of raw.images) {
+      const s = String(u || "").trim();
+      if (s && !images.includes(s)) images.push(s);
+    }
+  }
+  if (images.length === 0 && Array.isArray(hint.images) && hint.images[0]) {
+    images.push(...hint.images.slice(0, 8));
+  }
+
+  return {
+    title: String(raw.title).trim(),
+    description: String(raw.description || "").trim(),
+    priceCurrent: price,
+    currency: String(raw.currency || hint.currency || "USD").toUpperCase(),
+    images,
+    source: "gemini_extract",
+  };
 }
 
 /**
@@ -242,7 +332,7 @@ function shapeRainforestToScrape(productUrl, data) {
     const raw = String(priceObj.raw).replace(/[^0-9.,]/g, "").replace(",", ".");
     priceCurrent = Number.parseFloat(raw);
   }
-  if (priceCurrent == null || Number.isNaN(priceCurrent)) return null;
+  if (priceCurrent != null && Number.isNaN(priceCurrent)) priceCurrent = null;
   if (priceObj?.currency) currency = String(priceObj.currency).toUpperCase();
 
   const images = [];

@@ -13,7 +13,7 @@ router.post("/register", async (req, res, next) => {
     if (!email || !name) {
       return res.status(400).json({ message: "email and name are required" });
     }
-    const allowed = [USER_ROLES.VENDOR_ADMIN, USER_ROLES.CUSTOMER];
+    const allowed = [USER_ROLES.SELLER, USER_ROLES.CUSTOMER, "vendor_admin", "customer"];
     if (!allowed.includes(role)) {
       return res.status(400).json({
         message: "role must be vendor_admin or customer",

@@ -1,4 +1,12 @@
 import { useEffect, useState } from "react";
+import SizeGuideModal from "../components/product/SizeGuideModal.jsx";
+import {
+  showsSizeGuide,
+  hasQualityGuarantee,
+  isJewelleryCategory,
+  getCatalogKey,
+  CATALOG_KEYS,
+} from "../utils/productCategoryUi.js";
 import { Link, useParams } from "react-router-dom";
 import FacilitatorNote from "../components/legal/FacilitatorNote.jsx";
 import PriceAlertButton from "../components/marketplace/PriceAlertButton.jsx";
@@ -7,6 +15,8 @@ import QuickBuyWallet from "../components/checkout/QuickBuyWallet.jsx";
 import LiveActivityBadge from "../components/marketplace/LiveActivityBadge.jsx";
 import LowStockUrgencyBadge from "../components/marketplace/LowStockUrgencyBadge.jsx";
 import ProductWhatsAppFab from "../components/marketplace/ProductWhatsAppFab.jsx";
+import SourceBadge from "../components/marketplace/SourceBadge.jsx";
+import ProductPriceComparison from "../components/marketplace/ProductPriceComparison.jsx";
 import ProductJsonLd from "../components/seo/ProductJsonLd.jsx";
 import { productPath } from "../utils/productLink.js";
 import { shouldShowFacilitatorNote } from "../utils/complianceCategory.js";
@@ -23,6 +33,7 @@ export default function ProductDetailPage() {
   const [bulkQty, setBulkQty] = useState(1);
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(true);
+  const [sizeGuideOpen, setSizeGuideOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -96,6 +107,29 @@ export default function ProductDetailPage() {
       kwEl.setAttribute("content", kws.slice(0, 500));
     }
 
+    const ogTitle = String(product.seo?.ogTitle || headTitle).slice(0, 70);
+    const ogDesc = String(product.seo?.ogDescription || desc).slice(0, 200);
+    const ogImage =
+      product.seo?.ogImageUrl || product.images?.[0] || "";
+    const upsertMeta = (attr, key, content) => {
+      if (!content) return;
+      let node = document.querySelector(`meta[${attr}="${key}"]`);
+      if (!node) {
+        node = document.createElement("meta");
+        node.setAttribute(attr, key);
+        document.head.appendChild(node);
+      }
+      node.setAttribute("content", content);
+    };
+    upsertMeta("property", "og:type", "product");
+    upsertMeta("property", "og:title", ogTitle);
+    upsertMeta("property", "og:description", ogDesc);
+    upsertMeta("property", "og:image", ogImage);
+    upsertMeta("name", "twitter:card", ogImage ? "summary_large_image" : "summary");
+    upsertMeta("name", "twitter:title", ogTitle);
+    upsertMeta("name", "twitter:description", ogDesc);
+    if (ogImage) upsertMeta("name", "twitter:image", ogImage);
+
     return () => {
       document.title = prevTitle;
     };
@@ -103,6 +137,10 @@ export default function ProductDetailPage() {
 
   const showLegal = product?.category && shouldShowFacilitatorNote(product.category);
   const partner = product?.source_vendor_display || "";
+  const sizeGuide = product ? showsSizeGuide(product.category) : false;
+  const sizeMode = getCatalogKey(product?.category) === CATALOG_KEYS.SHOES ? "shoes" : "fashion";
+  const qualityBlock = product && hasQualityGuarantee(product.description, product.category);
+  const jewellery = product && isJewelleryCategory(product.category);
 
   const shelfH = product ? resolveShelfLifeHours(product) : null;
   const scrapedAt = product?.last_price_scraped_at || product?.updatedAt;
@@ -128,8 +166,24 @@ export default function ProductDetailPage() {
       {product && (
         <article className="mt-8 space-y-8">
           <ProductJsonLd product={product} />
-          <header className="glass-panel-strong rounded-3xl p-6 sm:p-8">
+          <header
+            className={`rounded-3xl p-6 sm:p-8 ${jewellery ? "jewellery-card-vip" : "glass-panel-strong"}`}
+          >
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/40">Product</p>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              {(product.sourceType || product.source_platform) && (
+                <SourceBadge
+                  sourceType={product.sourceType}
+                  sourcePlatform={product.source_platform}
+                  originCountry={product.origin_country}
+                />
+              )}
+              {product.original_price_native != null && product.original_currency ? (
+                <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] text-white/50 backdrop-blur-md">
+                  Source price · {product.original_price_native} {product.original_currency}
+                </span>
+              ) : null}
+            </div>
             <h1 className="mt-2 font-display text-2xl font-bold tracking-tight text-white sm:text-3xl">
               {product.title}
             </h1>
@@ -150,11 +204,38 @@ export default function ProductDetailPage() {
               </p>
             ) : null}
             {product.description ? (
-              <p className="mt-6 text-sm leading-relaxed text-white/70">{product.description}</p>
+              <p className="mt-6 whitespace-pre-line text-sm leading-relaxed text-white/70">
+                {product.description}
+              </p>
+            ) : null}
+            {qualityBlock ? (
+              <div className="mt-6 rounded-2xl border border-pink-400/25 bg-pink-500/10 p-4 backdrop-blur-md">
+                <p className="text-xs font-bold uppercase tracking-wider text-pink-200">VIP Quality Guarantee</p>
+                <p className="mt-2 text-sm text-white/75">
+                  100% Original & Certified. This premium product has undergone a luxury quality audit for KSA
+                  Store.
+                </p>
+              </div>
+            ) : null}
+            {sizeGuide ? (
+              <button
+                type="button"
+                onClick={() => setSizeGuideOpen(true)}
+                className="mt-6 rounded-2xl border border-white/15 bg-white/5 px-5 py-2.5 text-sm font-semibold text-white backdrop-blur-md transition hover:border-neon-cyan/40"
+              >
+                Size Guide
+              </button>
             ) : null}
           </header>
 
+          <SizeGuideModal open={sizeGuideOpen} onClose={() => setSizeGuideOpen(false)} mode={sizeMode} />
+
           {showLegal ? <FacilitatorNote partnerLabel={partner || undefined} /> : null}
+
+          <ProductPriceComparison
+            productId={product._id}
+            enabled={product.priceComparisonAvailable || product.origin_type === "global_scraped"}
+          />
 
           {product.origin_type === "global_scraped" && locals.length > 0 ? (
             <section className="glass-panel rounded-3xl p-6">

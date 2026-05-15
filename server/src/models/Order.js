@@ -60,21 +60,77 @@ const paymentSchema = new mongoose.Schema(
   {
     provider: {
       type: String,
-      enum: ["none", "stripe", "coinbase"],
+      enum: ["none", "stripe", "coinbase", "paypal", "bank_transfer", "cod"],
       default: "none",
     },
     status: {
       type: String,
-      enum: ["pending", "processing", "paid", "failed", "refunded"],
+      enum: ["pending", "processing", "paid", "failed", "refunded", "awaiting_review"],
       default: "pending",
     },
     stripeCheckoutSessionId: { type: String, default: "" },
     stripePaymentIntentId: { type: String, default: "" },
     coinbaseChargeId: { type: String, default: "" },
     coinbaseHostedUrl: { type: String, default: "" },
+    paypalOrderId: { type: String, default: "" },
+    paypalCaptureId: { type: String, default: "" },
+    bankReceiptUrl: { type: String, default: "" },
+    bankReference: { type: String, default: "" },
     paidAt: { type: Date, default: null },
     /** Idempotent paid receipt email (Stripe webhooks may fire more than once) */
     receiptEmailSentAt: { type: Date, default: null },
+    paymentSuccessEmailSentAt: { type: Date, default: null },
+    shippingUpdateEmailSentAt: { type: Date, default: null },
+  },
+  { _id: false }
+);
+
+/** 30% margin profit split — PayPal payout to platform receiver */
+const profitSplitSchema = new mongoose.Schema(
+  {
+    transactionId: { type: String, default: "" },
+    profitSentTo: { type: String, default: "", trim: true },
+    costPrice: { type: Number, default: 0, min: 0 },
+    profitAmount: { type: Number, default: 0, min: 0 },
+    totalCharged: { type: Number, default: 0, min: 0 },
+    marginPercent: { type: Number, default: 30 },
+    shippingAddress: { type: deliveryAddressSchema, default: undefined },
+    sourceUrl: { type: String, default: "" },
+    importConnector: { type: String, default: "" },
+    payoutCurrency: { type: String, default: "USD", uppercase: true },
+    payoutAmount: { type: Number, default: 0, min: 0 },
+    payoutStatus: {
+      type: String,
+      enum: ["pending", "sent", "failed", "skipped", "queued"],
+      default: "pending",
+    },
+    payoutBatchId: { type: String, default: "" },
+    payoutItemId: { type: String, default: "" },
+    payoutError: { type: String, default: "" },
+    payoutSentAt: { type: Date, default: null },
+    /** Optional headless assist — source buy URL opened for admin */
+    sourceBuyAssistStatus: {
+      type: String,
+      enum: ["none", "queued", "opened", "failed"],
+      default: "none",
+    },
+  },
+  { _id: false }
+);
+
+/** Magic Import lineage — linked to order for fulfillment */
+const magicImportSnapshotSchema = new mongoose.Schema(
+  {
+    originalUrl: { type: String, default: "" },
+    aiDescription: { type: String, default: "" },
+    scrapedImages: { type: [String], default: [] },
+    title: { type: String, default: "" },
+    basePriceSAR: { type: Number, default: 0 },
+    finalPriceSAR: { type: Number, default: 0 },
+    marginPercent: { type: Number, default: 30 },
+    displayCurrency: { type: String, default: "SAR" },
+    displayAmount: { type: Number, default: 0 },
+    importConnector: { type: String, default: "" },
   },
   { _id: false }
 );
@@ -97,6 +153,9 @@ const orderComplianceSchema = new mongoose.Schema(
       enum: ["not_required", "pending", "approved", "rejected"],
       default: "not_required",
     },
+    /** Gemini Vision OCR — false when manual Grand Admin review required before payment */
+    rxOcrPassed: { type: Boolean, default: null },
+    rxOcrScans: { type: [mongoose.Schema.Types.Mixed], default: [] },
     rxReviewedAt: { type: Date, default: null },
     rxReviewNote: { type: String, default: "" },
   },
@@ -119,6 +178,30 @@ const ksaRewardsSchema = new mongoose.Schema(
     coinDiscountSAR: { type: Number, default: 0, min: 0 },
     /** Filled when payment finalizes — 1% of paid subtotal, floored */
     coinsEarned: { type: Number, default: 0, min: 0 },
+  },
+  { _id: false }
+);
+
+const shipmentCheckpointSchema = new mongoose.Schema(
+  {
+    message: { type: String, default: "" },
+    location: { type: String, default: "" },
+    checkpointTime: { type: Date, default: null },
+    tag: { type: String, default: "" },
+  },
+  { _id: false }
+);
+
+/** Global carrier tracking (AfterShip) — customer-facing /track-order */
+const shipmentTrackingSchema = new mongoose.Schema(
+  {
+    carrierName: { type: String, default: "", trim: true },
+    trackingNumber: { type: String, default: "", trim: true, index: true },
+    aftershipId: { type: String, default: "" },
+    aftershipSlug: { type: String, default: "" },
+    lastTag: { type: String, default: "Processing" },
+    lastSyncedAt: { type: Date, default: null },
+    checkpoints: { type: [shipmentCheckpointSchema], default: [] },
   },
   { _id: false }
 );
@@ -185,6 +268,22 @@ const orderSchema = new mongoose.Schema(
      * Advanced automatically on pay / delivery; middle steps via admin.
      */
     vip_tracking_step: { type: Number, default: 0, min: 0, max: 4 },
+    /** Top-level parcel tracking (synced with shipmentTracking on admin update) */
+    trackingNumber: { type: String, default: "", trim: true, index: true },
+    /** AfterShip courier slug, e.g. dhl, fedex, amazon */
+    courierCode: { type: String, default: "", trim: true },
+    /** AfterShip / carrier parcel tracking for branded timeline */
+    shipmentTracking: { type: shipmentTrackingSchema, default: () => ({}) },
+    /** Rainforest + Gemini VIP data at checkout (fulfillment reference) */
+    magicImportSnapshot: { type: magicImportSnapshotSchema, default: undefined },
+    profitSplit: { type: profitSplitSchema, default: undefined },
+    /** urgent — perishable / gourmet food orders */
+    fulfillmentPriority: {
+      type: String,
+      enum: ["standard", "urgent"],
+      default: "standard",
+      index: true,
+    },
   },
   { timestamps: true }
 );

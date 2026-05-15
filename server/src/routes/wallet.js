@@ -7,7 +7,7 @@ import { PlatformSettings } from "../models/PlatformSettings.js";
 
 const router = Router();
 
-router.get("/", requireUser, requireRoles(USER_ROLES.VENDOR_ADMIN), async (req, res, next) => {
+router.get("/", requireUser, requireRoles(USER_ROLES.SELLER), async (req, res, next) => {
   try {
     const shop = await Shop.findOne({ owner: req.user._id }).lean();
     if (!shop) {
@@ -28,7 +28,7 @@ router.get("/", requireUser, requireRoles(USER_ROLES.VENDOR_ADMIN), async (req, 
   }
 });
 
-router.post("/withdraw", requireUser, requireRoles(USER_ROLES.VENDOR_ADMIN), async (req, res, next) => {
+router.post("/withdraw", requireUser, requireRoles(USER_ROLES.SELLER), async (req, res, next) => {
   try {
     const amount = Number(req.body?.amountSAR);
     if (Number.isNaN(amount) || amount <= 0) {

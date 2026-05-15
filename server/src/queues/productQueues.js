@@ -5,11 +5,13 @@ export const QUEUE_NAMES = Object.freeze({
   PRODUCT_SYNC: "product-sync",
   MAGIC_PREVIEW: "magic-import-preview",
   PRODUCT_SEO: "product-seo",
+  PRODUCT_VIDEO: "product-video",
 });
 
 let _productSyncQueue;
 let _magicPreviewQueue;
 let _productSeoQueue;
+let _productVideoQueue;
 
 function queueOpts(label) {
   const connection = createBullConnection(label);
@@ -49,6 +51,41 @@ export function getProductSeoQueue() {
  * @param {string} productId
  * @returns {Promise<boolean>} true if queued
  */
+export function getProductVideoQueue() {
+  const opts = queueOpts("queue-product-video");
+  if (!opts) return null;
+  if (!_productVideoQueue) {
+    _productVideoQueue = new Queue(QUEUE_NAMES.PRODUCT_VIDEO, opts);
+  }
+  return _productVideoQueue;
+}
+
+/**
+ * Queue Shotstack product reel generation after import.
+ * @param {string} productId
+ * @returns {Promise<boolean>}
+ */
+export async function enqueueProductVideoJob(productId) {
+  try {
+    const q = getProductVideoQueue();
+    if (!q) return false;
+    await q.add(
+      "generate-product-video",
+      { productId: String(productId) },
+      {
+        removeOnComplete: 100,
+        removeOnFail: 40,
+        attempts: 2,
+        backoff: { type: "exponential", delay: 8000 },
+      }
+    );
+    return true;
+  } catch (e) {
+    console.warn("[enqueueProductVideoJob]", e?.message || e);
+    return false;
+  }
+}
+
 export async function enqueueProductSeoJob(productId) {
   try {
     const q = getProductSeoQueue();

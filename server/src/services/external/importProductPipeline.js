@@ -6,7 +6,13 @@ import {
   getFxRatesSnapshot,
 } from "./apiManager.js";
 import { enrichImportListingWithAi } from "../ai/productContentRewriter.js";
+import {
+  buildGeminiSystemPromptForTone,
+  getImportToneKeyFromCategoryDoc,
+  postProcessVipCopy,
+} from "../../utils/catalog/categoryAiPrompts.js";
 import { uploadScrapedCatalogImagesVip } from "../media/cloudinaryVipMedia.js";
+import { processVipImportImages } from "../media/vipImageProcessor.js";
 import { MOCK_FX_TO_SAR } from "../../utils/pricing/calculateKSAStorePrice.js";
 import { getCachedScrapePayload, setCachedScrapePayload } from "../cache/scrapeCache.js";
 
@@ -33,31 +39,45 @@ export async function scrapeProductRawForImport(url) {
 
 /**
  * VIP Gemini rewrite; falls back to general AI rewriter (Gemini/OpenAI + cache).
+ * @param {object} scraped
+ * @param {{ category?: object, toneKey?: string }} [ctx]
  */
-export async function enrichCopyForConnectorImport(scraped) {
-  const vip = await rewriteProductCopyVipGemini({
+export async function enrichCopyForConnectorImport(scraped, ctx = {}) {
+  const toneKey =
+    ctx.toneKey ||
+    getImportToneKeyFromCategoryDoc(ctx.category) ||
+    "general";
+  const systemPrompt = buildGeminiSystemPromptForTone(toneKey);
+
+  const vipRaw = await rewriteProductCopyVipGemini({
+    title: scraped.title,
+    description: scraped.description || "",
+    sourceHint: scraped.sourceType,
+    systemPrompt,
+  });
+  if (vipRaw) return postProcessVipCopy(vipRaw, toneKey);
+
+  const fallback = await enrichImportListingWithAi({
     title: scraped.title,
     description: scraped.description || "",
     sourceHint: scraped.sourceType,
   });
-  if (vip) return vip;
-  return enrichImportListingWithAi({
-    title: scraped.title,
-    description: scraped.description || "",
-    sourceHint: scraped.sourceType,
-  });
+  return postProcessVipCopy(fallback, toneKey);
 }
 
 /**
- * Hosts images on Cloudinary when configured; otherwise returns original URLs.
+ * Hosts images on Cloudinary when configured; VIP sharp pass for jewellery/makeup.
  * @param {string[]} urls
+ * @param {{ toneKey?: string, hiResImages?: string[] }} [opts]
  */
-export async function prepareImagesForCatalog(urls) {
-  const uploaded = await uploadScrapedCatalogImagesVip(urls || [], {
+export async function prepareImagesForCatalog(urls, opts = {}) {
+  const processed = await processVipImportImages(urls || [], { ...opts, skipCloudinary: true });
+  const list = processed.urls?.length ? processed.urls : urls || [];
+  const uploaded = await uploadScrapedCatalogImagesVip(list, {
     folder: process.env.CLOUDINARY_CATALOG_FOLDER || "ksa-store/catalog-vip",
   });
   if (uploaded.length > 0) return uploaded;
-  return urls || [];
+  return list;
 }
 
 /**

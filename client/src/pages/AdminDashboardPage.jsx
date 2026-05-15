@@ -4,13 +4,19 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { useCurrency } from "../context/CurrencyContext.jsx";
 import { isKiranGrandAdmin } from "../utils/kiranAdmin.js";
 import MagicAmazonImportPanel from "../components/admin/MagicAmazonImportPanel.jsx";
+import AdminSellerManagementPanel from "../components/admin/AdminSellerManagementPanel.jsx";
+import AdminPendingInventoryPanel from "../components/admin/AdminPendingInventoryPanel.jsx";
+import AdminAutomationLogsPanel from "../components/admin/AdminAutomationLogsPanel.jsx";
+import AdminSalesAnalyticsPanel from "../components/admin/AdminSalesAnalyticsPanel.jsx";
 import SourceVendorBadge from "../components/legal/SourceVendorBadge.jsx";
 
 export default function AdminDashboardPage() {
   const { token, user, loading } = useAuth();
+  const { currency } = useCurrency();
   const [data, setData] = useState(null);
   const [err, setErr] = useState("");
   const [copyMsg, setCopyMsg] = useState("");
+  const [tab, setTab] = useState("overview");
 
   useEffect(() => {
     if (!token || !isKiranGrandAdmin(user)) return;
@@ -70,13 +76,52 @@ export default function AdminDashboardPage() {
         </Link>
       </div>
 
-      <h1 className="mt-6 font-display text-2xl font-bold text-white">Grand Admin · Operations</h1>
+      <h1 className="mt-6 font-display text-2xl font-bold text-white">Super Admin · Kiran</h1>
       <p className="mt-2 text-sm text-white/55">
-        Signed in as <span className="text-white/90">{user.name}</span> — hyper-local queue and catalogue tools.
+        Signed in as <span className="text-white/90">{user.name}</span> — sellers, inventory approval, Magic Import.
       </p>
 
+      <div className="mt-8 flex flex-wrap gap-2">
+        {[
+          { id: "overview", label: "Overview" },
+          { id: "analytics", label: "Analytics" },
+        ].map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => setTab(t.id)}
+            className={`rounded-full border px-5 py-2 text-xs font-bold uppercase tracking-wider transition ${
+              tab === t.id
+                ? "border-neon-cyan/50 bg-neon-cyan/15 text-neon-cyan"
+                : "border-white/15 text-white/50 hover:text-white"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === "analytics" ? (
+        <div className="mt-8">
+          <AdminSalesAnalyticsPanel token={token} />
+        </div>
+      ) : (
+        <>
+      <div className="mt-10 grid gap-8 lg:grid-cols-2">
+        <AdminSellerManagementPanel token={token} />
+        <AdminPendingInventoryPanel token={token} />
+      </div>
+
       <div className="mt-10">
-        <MagicAmazonImportPanel token={token} displayCurrency={currency} />
+        <AdminAutomationLogsPanel token={token} />
+      </div>
+
+      <div className="mt-10">
+        <MagicAmazonImportPanel
+          token={token}
+          displayCurrency={currency}
+          loaderText="AI is styling your product for the VIP collection…"
+        />
       </div>
 
       {err && (
@@ -86,7 +131,7 @@ export default function AdminDashboardPage() {
       )}
       {copyMsg && <p className="mt-4 text-xs text-teal-200/90">{copyMsg}</p>}
 
-      {data?.pendingDropshipOrders && data.pendingDropshipOrders.length > 0 ? (
+      {tab === "overview" && data?.pendingDropshipOrders && data.pendingDropshipOrders.length > 0 ? (
         <section className="mt-10 space-y-4">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-teal-200/90">
             Pending checkout · Purchase on partner
@@ -127,7 +172,7 @@ export default function AdminDashboardPage() {
         </section>
       ) : null}
 
-      {data?.recentOrders && (
+      {data?.recentOrders?.length > 0 ? (
         <section className="mt-10 space-y-4">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-white/45">Recent paid orders</h2>
           <ul className="space-y-4">
@@ -148,6 +193,9 @@ export default function AdminDashboardPage() {
             ))}
           </ul>
         </section>
+      ) : null}
+
+        </>
       )}
     </div>
   );

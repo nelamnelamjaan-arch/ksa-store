@@ -2,10 +2,15 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import HyperlocalMarketplaceSidebar from "../components/marketplace/HyperlocalMarketplaceSidebar.jsx";
 import ProductCard from "../components/ui/ProductCard.jsx";
+import CategoryNavBar from "../components/layout/CategoryNavBar.jsx";
+import { isJewelleryCategory } from "../utils/productCategoryUi.js";
 import VisualSearchPanel from "../components/search/VisualSearchPanel.jsx";
 import { productPath } from "../utils/productLink.js";
+import { geoFetch } from "../utils/geoFetch.js";
+import { useStorefront } from "../context/StorefrontContext.jsx";
 
 export default function BrowsePage() {
+  const { country, dailyEssentialsVendors, format: formatMoney } = useStorefront();
   const [searchParams] = useSearchParams();
   const vertical = searchParams.get("vertical") || "";
   const catalogKey = searchParams.get("catalog_key") || "";
@@ -27,7 +32,7 @@ export default function BrowsePage() {
     (async () => {
       setLoading(true);
       try {
-        const res = await fetch(`/api/products${qs}`);
+        const res = await geoFetch(`/api/products${qs}`);
         const data = await res.json().catch(() => []);
         if (!cancelled) setProducts(Array.isArray(data) ? data : []);
       } catch {
@@ -39,16 +44,20 @@ export default function BrowsePage() {
     return () => {
       cancelled = true;
     };
-  }, [qs]);
+  }, [qs, country]);
+
+  const isGourmet = vertical === "gourmet_food";
 
   const title =
     catalogKey === "fresh_produce"
       ? "Fresh Produce"
       : catalogKey === "daily_essentials"
         ? "Daily Essentials"
-        : vertical === "healthcare"
-          ? "Pharmacy"
-          : "Browse";
+        : isGourmet
+          ? "Gourmet Food & Essentials"
+          : vertical === "healthcare"
+            ? "Pharmacy"
+            : "Browse";
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-8 px-4 py-12 lg:flex-row lg:px-8">
@@ -62,9 +71,16 @@ export default function BrowsePage() {
         <Link to="/" className="text-sm text-neon-cyan hover:underline">
           ← Home
         </Link>
-        <h1 className="mt-4 font-display text-2xl font-bold text-white">{title}</h1>
+        <CategoryNavBar />
+        <h1 className="mt-6 font-display text-2xl font-bold text-white">{title}</h1>
         <p className="mt-2 text-sm text-white/50">
           Prices reflect partner sites; margin: groceries +15%, pharmacy +10%, luxury +30%.
+          {catalogKey === "daily_essentials" && dailyEssentialsVendors?.length > 0 ? (
+            <span className="mt-2 block text-neon-cyan/80">
+              Sourcing from local partners:{" "}
+              {dailyEssentialsVendors.map((v) => v.label).join(", ")}.
+            </span>
+          ) : null}
         </p>
 
         {loading ? (
@@ -75,14 +91,27 @@ export default function BrowsePage() {
               <Link key={p._id} to={productPath(p)} className="block">
                 <ProductCard
                   title={p.title}
-                  price={`${p.ksaPrice} SAR`}
-                  tag={p.storeStockStatus === "in_stock" ? "In stock" : "Check stock"}
+                  price={formatMoney(p.ksaPrice)}
+                  sourceType={p.sourceType}
+                  sourcePlatform={p.source_platform}
+                  originCountry={p.origin_country}
+                  priceComparisonAvailable={p.priceComparisonAvailable}
+                  tag={
+                    isGourmet && p.deliveryType === "Local Express"
+                      ? "Local Express"
+                      : p.storeStockStatus === "in_stock"
+                        ? "In stock"
+                        : "Check stock"
+                  }
                   image={p.images?.[0]}
                   index={i}
                   lastPriceScrapedAt={p.last_price_scraped_at || p.updatedAt}
                   stockStatus={p.storeStockStatus}
                   category={p.category}
-                  perishable={p.perishable}
+                  perishable={p.isPerishable ?? p.perishable}
+                  vipGourmetBadge={p.vipGourmetBadge}
+                  gourmetTheme={isGourmet}
+                  jewelleryTheme={isJewelleryCategory(p.category)}
                 />
               </Link>
             ))}

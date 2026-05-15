@@ -4,7 +4,10 @@ import {
   PRODUCT_SOURCE_TYPES,
   AGE_SEGMENTS,
   ORIGIN_TYPES,
+  PRODUCT_STATUSES,
 } from "../models/Product.js";
+import { PUBLIC_PRODUCT_QUERY, isPublicMarketplaceProduct } from "../utils/marketplace/publicCatalog.js";
+import { isKiranGrandAdmin } from "../services/auth/kiranAdmin.js";
 import { Category } from "../models/Category.js";
 import { Shop } from "../models/Shop.js";
 import { USER_ROLES } from "../models/User.js";
@@ -14,7 +17,13 @@ import { bumpProductHttpCacheVersion } from "../middleware/productReadCache.js";
 import { slugifyProductTitle, ensureUniqueProductSlug } from "../utils/productSlug.js";
 import { enqueueProductSeoJob } from "../queues/productQueues.js";
 import { processProductSeoInBackground } from "../services/seo/productSeoJob.js";
-import { importProductFromAmazonUrl } from "../services/productService.js";
+import { enqueueProductVideoJob } from "../queues/productQueues.js";
+import { processProductVideoInBackground } from "../services/media/productVideoJob.js";
+import { runUnifiedProductImport } from "../services/import/importService.js";
+import { sanitizeProductForStorefront, sanitizeProductsForStorefront } from "../utils/marketplace/publicProductResponse.js";
+import { sortProductsForStorefront } from "../services/geo/dailyEssentialsScraper.js";
+import { CATALOG_KEYS } from "../models/Category.js";
+import { searchProductsByText } from "../services/search/productTextSearch.js";
 
 const CAT_POPULATE =
   "name slug group marketplace_vertical catalog_key parent requires_prescription_review default_freshness_hours";
@@ -49,7 +58,7 @@ function escapeRegex(s) {
 
 export async function createProduct(req, res, next) {
   try {
-    if (req.user.role !== USER_ROLES.VENDOR_ADMIN) {
+    if (req.user.role !== USER_ROLES.SELLER && req.user.role !== "vendor_admin") {
       return res.status(403).json({ message: "Only shop owners can list products" });
     }
 
@@ -121,6 +130,9 @@ export async function createProduct(req, res, next) {
     const baseSlug = slugifyProductTitle(String(title).trim());
     const urlSlug = await ensureUniqueProductSlug(baseSlug);
 
+    const isSuperAdmin = isKiranGrandAdmin(req.user);
+    const status = isSuperAdmin ? PRODUCT_STATUSES.APPROVED : PRODUCT_STATUSES.PENDING;
+
     const product = await Product.create({
       title: String(title).trim(),
       slug: urlSlug,
@@ -132,6 +144,10 @@ export async function createProduct(req, res, next) {
       category: categoryId,
       shop: shopId,
       createdBy: req.user._id,
+      sellerId: req.user._id,
+      status,
+      approvalStatus: status,
+      isActive: isSuperAdmin,
       images: Array.isArray(images) ? images.map(String) : [],
       age_segment: ageSeg,
       origin_type: origin,
@@ -154,6 +170,9 @@ export async function createProduct(req, res, next) {
     const queuedSeo = await enqueueProductSeoJob(product._id);
     if (!queuedSeo) processProductSeoInBackground(product._id);
 
+    const queuedVideo = await enqueueProductVideoJob(product._id);
+    if (!queuedVideo) processProductVideoInBackground(product._id);
+
     await bumpProductHttpCacheVersion("product-created");
     return res.status(201).json(populated);
   } catch (err) {
@@ -164,8 +183,8 @@ export async function createProduct(req, res, next) {
 export async function listFeaturedProducts(req, res, next) {
   try {
     const now = new Date();
-    const products = await Product.find({
-      isActive: true,
+    let products = await Product.find({
+      ...PUBLIC_PRODUCT_QUERY,
       featuredUntil: { $gt: now },
     })
       .populate("category", CAT_POPULATE)
@@ -174,7 +193,10 @@ export async function listFeaturedProducts(req, res, next) {
       .limit(Math.min(Number(req.query.limit) || 24, 48))
       .lean();
 
-    res.json(products);
+    const storefrontCountry = req.detectedCountry || req.storefront?.country || "SA";
+    products = sortProductsForStorefront(products, storefrontCountry);
+
+    res.json(sanitizeProductsForStorefront(products));
   } catch (err) {
     next(err);
   }
@@ -196,8 +218,22 @@ export async function listAgeRecommendations(req, res, next) {
 
 export async function listProducts(req, res, next) {
   try {
-    const filter = { isActive: true };
+    const textQ = String(req.query.q || req.query.search || "").trim();
+    if (textQ) {
+      const result = await searchProductsByText(textQ, {
+        limit: req.query.limit,
+        categoryId: req.query.categoryId,
+        origin_country: req.query.origin_country || req.detectedCountry,
+      });
+      return res.json(result.products);
+    }
+
+    const filter = { ...PUBLIC_PRODUCT_QUERY };
     const andClauses = [];
+
+    if (req.query.origin_country) {
+      filter.origin_country = String(req.query.origin_country).toUpperCase().slice(0, 2);
+    }
 
     if (req.query.shopId && mongoose.isValidObjectId(req.query.shopId)) {
       filter.shop = req.query.shopId;
@@ -255,14 +291,22 @@ export async function listProducts(req, res, next) {
       filter.$and = andClauses;
     }
 
-    const products = await Product.find(filter)
+    let products = await Product.find(filter)
       .populate("category", CAT_POPULATE)
       .populate("shop", "name slug")
       .sort({ createdAt: -1 })
       .limit(Math.min(Number(req.query.limit) || 50, 100))
       .lean();
 
-    res.json(products);
+    const catalogKey = req.query.catalog_key
+      ? String(req.query.catalog_key).toLowerCase()
+      : "";
+    const storefrontCountry = req.detectedCountry || req.storefront?.country || "SA";
+    if (catalogKey === CATALOG_KEYS.DAILY_ESSENTIALS || catalogKey === "daily_essentials") {
+      products = sortProductsForStorefront(products, storefrontCountry);
+    }
+
+    res.json(sanitizeProductsForStorefront(products));
   } catch (err) {
     next(err);
   }
@@ -272,8 +316,22 @@ export async function getProduct(req, res, next) {
   try {
     const product = await findProductLeanByParam(req.params.id);
     if (!product) return res.status(404).json({ message: "Product not found" });
+    if (!isPublicMarketplaceProduct(product)) {
+      const viewerId = req.user?._id ? String(req.user._id) : "";
+      const ownerId = String(product.sellerId || product.createdBy || "");
+      const isOwner = viewerId && ownerId && viewerId === ownerId;
+      if (!isOwner && !isKiranGrandAdmin(req.user)) {
+        return res.status(404).json({ message: "Product not found" });
+      }
+    }
     const source_vendor_display = deriveSourceVendorLabel(product);
-    res.json({ ...product, source_vendor_display });
+    const isAdmin = isKiranGrandAdmin(req.user);
+    const viewerId = req.user?._id ? String(req.user._id) : "";
+    const ownerId = String(product.sellerId || product.createdBy || "");
+    const isOwner = viewerId && ownerId && viewerId === ownerId;
+    const payload =
+      isAdmin || isOwner ? { ...product, source_vendor_display } : sanitizeProductForStorefront({ ...product, source_vendor_display });
+    res.json(payload);
   } catch (err) {
     next(err);
   }
@@ -310,7 +368,7 @@ export async function getLocalAlternatives(req, res, next) {
     }
 
     const alternatives = await Product.find({
-      isActive: true,
+      ...PUBLIC_PRODUCT_QUERY,
       storeStockStatus: { $ne: "out_of_stock" },
       origin_type: ORIGIN_TYPES.LOCAL_VENDOR,
       _id: { $ne: anchor._id },
@@ -326,36 +384,53 @@ export async function getLocalAlternatives(req, res, next) {
     res.json({
       anchorId: anchor._id,
       anchorPrice: anchor.ksaPrice,
-      alternatives,
+      alternatives: sanitizeProductsForStorefront(alternatives),
     });
   } catch (err) {
     next(err);
   }
 }
 
-/** Kiran only: Magic Import — POST /api/products/import */
+/**
+ * Kiran Grand Admin only — Magic Import.
+ * POST /api/products/import
+ * Body: { url: string, shopId?: string, currency?: string }
+ */
 export async function importProduct(req, res, next) {
   try {
-    const { url, shopId, currency } = req.body ?? {};
+    const { url, shopId, currency, categoryKey, categorySlug } = req.body ?? {};
     if (!url || typeof url !== "string") {
-      return res.status(400).json({ message: "url is required (Amazon product page URL)" });
+      return res.status(400).json({ message: "url is required (Amazon or product page URL)" });
     }
 
-    const result = await importProductFromAmazonUrl({
-      amazonUrl: url.trim(),
+    const displayCurrency =
+      currency || req.session?.currency || req.clientCurrency || req.money?.displayCurrency || "SAR";
+
+    const result = await runUnifiedProductImport({
+      productUrl: url.trim(),
       shopId,
       createdBy: req.user._id,
-      displayCurrency: currency || req.money?.displayCurrency,
+      sellerId: req.user._id,
+      displayCurrency,
+      categoryKey,
+      categorySlug,
+      autoApprove: true,
     });
 
     res.status(201).json({
-      message: "Product imported to KSA Store",
+      message: "Product imported — Active on storefront",
       product: result.product,
       preview: result.preview,
+      importLog: result.importLog,
+      clientCurrency: req.session?.currency || displayCurrency,
     });
   } catch (err) {
-    if (err.status) return res.status(err.status).json({ message: err.message });
-    next(err);
+    const status = err.status || 500;
+    console.error("[importProduct]", err.message, err.importLog || "");
+    return res.status(status).json({
+      message: err.message || "Import failed",
+      importLog: err.importLog,
+    });
   }
 }
 

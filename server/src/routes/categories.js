@@ -11,6 +11,6 @@ const router = Router();
 
 router.get("/", listCategories);
 router.get("/:id", getCategory);
-router.post("/", requireUser, requireRoles(USER_ROLES.GRAND_ADMIN), createCategory);
+router.post("/", requireUser, requireRoles(USER_ROLES.SUPER_ADMIN), createCategory);
 
 export default router;

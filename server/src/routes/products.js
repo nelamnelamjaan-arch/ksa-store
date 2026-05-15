@@ -28,6 +28,7 @@ router.get("/featured", cacheGet, listFeaturedProducts);
 router.get("/:id/local-alternatives", cacheGet, getLocalAlternatives);
 router.get("/:id", cacheGet, getProduct);
 router.post("/", requireUser, createProduct);
+/** Magic Import — Rainforest + Gemini VIP + 30% margin → MongoDB Pending (Kiran JWT) */
 router.post("/import", requireUser, requireKiranGrandAdmin, importProduct);
 router.post("/import-amazon", requireUser, requireKiranGrandAdmin, importAmazonProduct);
 

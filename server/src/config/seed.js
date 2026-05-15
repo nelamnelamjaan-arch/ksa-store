@@ -107,6 +107,38 @@ async function upsertChildCategory(parentId, fields) {
   );
 }
 
+/** Gourmet Food & Essentials — VIP online food ordering */
+async function ensureGourmetFoodCatalog() {
+  const gourmet = await upsertRootCategory({
+    name: "Gourmet Food & Essentials",
+    slug: "gourmet-food-essentials",
+    description: "Artisan, hand-picked gourmet foods — Amazon Fresh, Walmart Grocery, and premium imports.",
+    group: "gourmet",
+    marketplace_vertical: MARKETPLACE_VERTICALS.GOURMET_FOOD,
+    catalog_key: CATALOG_KEYS.GOURMET_FOOD,
+    default_freshness_hours: 48,
+    sort_order: 0,
+  });
+  if (gourmet?._id) {
+    await upsertChildCategory(gourmet._id, {
+      name: "Organic & Artisan",
+      slug: "organic-artisan",
+      group: "gourmet",
+      marketplace_vertical: MARKETPLACE_VERTICALS.GOURMET_FOOD,
+      catalog_key: CATALOG_KEYS.GOURMET_FOOD,
+      default_freshness_hours: 48,
+    });
+    await upsertChildCategory(gourmet._id, {
+      name: "Pantry & Essentials",
+      slug: "gourmet-pantry",
+      group: "gourmet",
+      marketplace_vertical: MARKETPLACE_VERTICALS.GOURMET_FOOD,
+      catalog_key: CATALOG_KEYS.GOURMET_FOOD,
+      default_freshness_hours: 168,
+    });
+  }
+}
+
 /** Nested Universal Needs tree (Essentials / HealthCare / Home Needs). */
 async function ensureUniversalNeedsCatalog() {
   const essentials = await upsertRootCategory({
@@ -243,7 +275,10 @@ export async function ensureCatalogDefaults() {
     );
   }
 
+  await ensureGourmetFoodCatalog();
   await ensureUniversalNeedsCatalog();
+  const { ensureLuxuryCatalog } = await import("./luxuryCatalogSeed.js");
+  await ensureLuxuryCatalog();
 }
 
 /**
@@ -253,12 +288,13 @@ export async function ensureCatalogDefaults() {
 export async function seedDemoUsers() {
   await ensureCatalogDefaults();
 
-  let admin = await User.findOne({ role: USER_ROLES.GRAND_ADMIN });
+  let admin = await User.findOne({ role: { $in: [USER_ROLES.SUPER_ADMIN, "grand_admin"] } });
   if (!admin) {
     admin = await User.create({
       email: "admin@ksastore.local",
       name: "Grand Admin",
-      role: USER_ROLES.GRAND_ADMIN,
+      role: USER_ROLES.SUPER_ADMIN,
+      isApproved: true,
     });
   }
 
@@ -267,7 +303,8 @@ export async function seedDemoUsers() {
     vendor = await User.create({
       email: "vendor@ksastore.local",
       name: "Demo Vendor",
-      role: USER_ROLES.VENDOR_ADMIN,
+      role: USER_ROLES.SELLER,
+      isApproved: true,
     });
   }
 

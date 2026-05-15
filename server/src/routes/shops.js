@@ -1,7 +1,11 @@
 import { Router } from "express";
 import { requireUser } from "../middleware/auth.js";
 import { Shop } from "../models/Shop.js";
-import { USER_ROLES } from "../models/User.js";
+import { Product } from "../models/Product.js";
+import { User, USER_ROLES } from "../models/User.js";
+import { PUBLIC_PRODUCT_QUERY } from "../utils/marketplace/publicCatalog.js";
+import { isApprovedSellerUser, normalizeRole } from "../utils/rbac/roles.js";
+import { PRODUCT_STATUSES } from "../models/Product.js";
 
 function slugify(value) {
   return String(value)
@@ -15,7 +19,7 @@ const router = Router();
 
 router.post("/", requireUser, async (req, res, next) => {
   try {
-    if (req.user.role !== USER_ROLES.VENDOR_ADMIN) {
+    if (req.user.role !== USER_ROLES.SELLER && req.user.role !== "vendor_admin") {
       return res.status(403).json({ message: "Only vendors can open a shop" });
     }
 
@@ -59,6 +63,36 @@ router.get("/mine", requireUser, async (req, res, next) => {
     const shop = await Shop.findOne({ owner: req.user._id }).lean();
     if (!shop) return res.status(404).json({ message: "No shop found" });
     res.json(shop);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/** Public seller storefront */
+router.get("/:slug", async (req, res, next) => {
+  try {
+    const slug = String(req.params.slug || "").toLowerCase().trim();
+    const shop = await Shop.findOne({ slug, isActive: true }).lean();
+    if (!shop) return res.status(404).json({ message: "Shop not found" });
+
+    const owner = await User.findById(shop.owner)
+      .select("name role isApproved")
+      .lean();
+    if (!owner || normalizeRole(owner.role) !== USER_ROLES.SELLER || !isApprovedSellerUser(owner)) {
+      return res.status(404).json({ message: "Shop not found" });
+    }
+
+    const products = await Product.find({
+      shopSlug: slug,
+      status: PRODUCT_STATUSES.APPROVED,
+      isActive: true,
+    })
+      .select("title slug description ksaPrice images createdAt")
+      .sort({ createdAt: -1 })
+      .limit(48)
+      .lean();
+
+    res.json({ shop, seller: { name: owner.name }, products });
   } catch (err) {
     next(err);
   }

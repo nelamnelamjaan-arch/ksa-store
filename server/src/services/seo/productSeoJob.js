@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { Product } from "../../models/Product.js";
 import { generateProductSeoWithGemini } from "./seoService.js";
+import { generateProductSeoBundle } from "./productSeoBundle.js";
 import { bumpProductHttpCacheVersion } from "../../middleware/productReadCache.js";
 
 /**
@@ -14,21 +15,43 @@ export async function applyGeminiSeoToProduct(productId) {
   if (!product) return { ok: false, reason: "not_found" };
 
   const cat = product.category;
-  const seo = await generateProductSeoWithGemini({
+  const bundle = await generateProductSeoBundle({
+    title: product.title,
+    description: product.description,
+    categoryName: cat?.name || "General",
+    categorySlug: cat?.slug || "",
+    verticalHint: cat?.marketplace_vertical || cat?.catalog_key || "",
+    primaryImageUrl: product.images?.[0],
+    imageUrls: product.images,
+  });
+
+  const seo = bundle || (await generateProductSeoWithGemini({
     title: product.title,
     categoryName: cat?.name || "General",
     categorySlug: cat?.slug || "",
     verticalHint: cat?.marketplace_vertical || cat?.catalog_key || "",
-  });
+  }));
 
   if (!seo) {
     return { ok: false, reason: "no_seo" };
   }
 
+  const title = String(product.title || "").trim();
+  const imageAlts =
+    seo.imageAlts?.length > 0
+      ? seo.imageAlts
+      : (product.images || []).map((url, i) =>
+          `${title}${(product.images || []).length > 1 ? ` — image ${i + 1}` : ""}`.slice(0, 120)
+        );
+
   product.seo = {
     metaTitle: seo.metaTitle,
     metaDescription: seo.metaDescription,
-    keywords: seo.keywords,
+    keywords: seo.keywords || [],
+    imageAlts,
+    ogImageUrl: seo.ogImageUrl || product.images?.[0] || "",
+    ogTitle: seo.ogTitle || seo.metaTitle,
+    ogDescription: seo.ogDescription || seo.metaDescription,
   };
   product.markModified("seo");
   await product.save();

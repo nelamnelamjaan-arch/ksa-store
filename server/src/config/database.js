@@ -13,5 +13,11 @@ export async function connectDb() {
   mongoose.set("strictQuery", true);
   await mongoose.connect(MONGODB_URI);
   console.log("MongoDB connected");
+  try {
+    const { ensureProductIndexes } = await import("./ensureProductIndexes.js");
+    await ensureProductIndexes();
+  } catch (err) {
+    console.warn("[mongodb] Product index sync:", err.message);
+  }
   return true;
 }

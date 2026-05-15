@@ -19,6 +19,9 @@ import {
 import { getMagicPreviewQueue } from "../queues/productQueues.js";
 import { bumpProductHttpCacheVersion } from "../middleware/productReadCache.js";
 import { fetchStripePayoutSnapshot } from "../services/payments/stripeBalanceAdmin.js";
+import { getAutomationLogs } from "../services/automation/automationLog.js";
+import { runAutoPilotSyncJob, runDailyProfitReportJob } from "../services/cronJobs.js";
+import { aggregateSalesAnalytics } from "../services/analytics/salesAnalytics.js";
 
 const PAID_STATUSES = ["paid", "fulfilled"];
 
@@ -778,6 +781,10 @@ export async function patchOrderPrescriptionReview(req, res, next) {
     order.compliance.rxReviewStatus = rxReviewStatus;
     order.compliance.rxReviewNote = String(rxReviewNote).slice(0, 500);
     order.compliance.rxReviewedAt = new Date();
+    if (rxReviewStatus === "approved" && order.payment?.status === "awaiting_review") {
+      order.payment.status = "pending";
+      order.markModified("payment");
+    }
     order.markModified("compliance");
     await order.save();
     res.json({ ok: true, compliance: order.compliance });
@@ -861,6 +868,52 @@ export async function patchOrderVipTracking(req, res, next) {
     res.json({ ok: true, vip_tracking_step: order.vip_tracking_step });
   } catch (err) {
     next(err);
+  }
+}
+
+/** Auto-Pilot automation logs (scraper, Gemini, cron). */
+export async function getAdminAutomationLogs(req, res, next) {
+  try {
+    const limit = Math.min(Math.max(Number(req.query.limit) || 80, 1), 200);
+    res.json(getAutomationLogs(limit));
+  } catch (e) {
+    next(e);
+  }
+}
+
+/** Manually trigger the 6-hour Auto-Pilot price/stock sync. */
+export async function postAdminAutomationRunSync(req, res, next) {
+  try {
+    const result = await runAutoPilotSyncJob();
+    res.json({ ok: true, ...result });
+  } catch (e) {
+    next(e);
+  }
+}
+
+/** Sales analytics — revenue, profit, categories, fulfilment queue. */
+export async function getAdminSalesAnalytics(req, res, next) {
+  try {
+    const data = await aggregateSalesAnalytics();
+    res.json(data);
+  } catch (e) {
+    next(e);
+  }
+}
+
+/** Send daily profit report email now (same job as 23:59 cron). */
+export async function postAdminDailyProfitReport(req, res, next) {
+  try {
+    const result = await runDailyProfitReportJob();
+    res.json({
+      ok: true,
+      sent: result.emailResult?.sent ?? false,
+      quietDay: result.report?.quietDay,
+      totals: result.report?.totals,
+      reason: result.emailResult?.reason,
+    });
+  } catch (e) {
+    next(e);
   }
 }
 

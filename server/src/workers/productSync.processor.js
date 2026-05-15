@@ -6,6 +6,7 @@ import { PlatformSettings } from "../models/PlatformSettings.js";
 import { publishMagicImportProgress } from "../services/jobs/magicImportProgressBus.js";
 import { bumpProductHttpCacheVersion } from "../middleware/productReadCache.js";
 import { applyGeminiSeoToProduct } from "../services/seo/productSeoJob.js";
+import { applyProductVideoToProduct } from "../services/media/productVideoJob.js";
 
 /**
  * BullMQ workers — run in a **dedicated process** (`npm run worker:bull`).
@@ -15,6 +16,7 @@ export function createKsaBullWorkers() {
   const connSync = createBullConnection("worker-product-sync");
   const connMagic = createBullConnection("worker-magic-preview");
   const connSeo = createBullConnection("worker-product-seo");
+  const connVideo = createBullConnection("worker-product-video");
   if (!connSync || !connMagic) {
     console.warn("[BullWorker] REDIS_URL not set — workers not started.");
     return null;
@@ -125,6 +127,29 @@ export function createKsaBullWorkers() {
     connections.push(connSeo);
   } else {
     console.warn("[BullWorker] product-seo connection missing — SEO queue worker not started.");
+  }
+
+  if (connVideo) {
+    const videoWorker = new Worker(
+      QUEUE_NAMES.PRODUCT_VIDEO,
+      async (job) => {
+        if (job.name !== "generate-product-video") return null;
+        const pid = job.data?.productId;
+        const out = await applyProductVideoToProduct(pid);
+        if (!out?.ok && out?.reason !== "not_configured" && !out?.skipped) {
+          console.warn("[BullWorker] video job", job?.id, out);
+        }
+        return out;
+      },
+      { connection: connVideo, concurrency: 1 }
+    );
+    videoWorker.on("failed", (job, err) =>
+      console.warn("[BullWorker] video failed", job?.id, err?.message)
+    );
+    workers.push(videoWorker);
+    connections.push(connVideo);
+  } else {
+    console.warn("[BullWorker] product-video connection missing — video queue worker not started.");
   }
 
   return {

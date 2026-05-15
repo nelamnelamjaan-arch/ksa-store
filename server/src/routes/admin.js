@@ -1,6 +1,7 @@
 import { Router } from "express";
-import { requireUser, requireRoles } from "../middleware/auth.js";
+import { requireUser } from "../middleware/auth.js";
 import { requireKiranGrandAdmin } from "../middleware/kiranAdmin.js";
+import { authorize } from "../middleware/authorize.js";
 import { USER_ROLES } from "../models/User.js";
 import {
   getDashboard,
@@ -30,14 +31,33 @@ import {
   patchOrderDelivery,
   patchOrderVipTracking,
   getStripePayoutDashboard,
+  getAdminAutomationLogs,
+  postAdminAutomationRunSync,
+  postAdminDailyProfitReport,
+  getAdminSalesAnalytics,
 } from "../controllers/adminController.js";
 import { syncAllProductStocksFromSources } from "../services/automation/stockSyncJob.js";
+import { postAdminConfirmOrderPayment } from "../controllers/universalCheckoutController.js";
+import {
+  listSellers,
+  createSeller,
+  patchSeller,
+  listPendingProducts,
+  patchProductApproval,
+} from "../controllers/marketplaceAdminController.js";
+import { patchOrderShipmentTracking } from "../controllers/trackingController.js";
 
 const router = Router();
 
 router.use(requireUser);
-router.use(requireRoles(USER_ROLES.GRAND_ADMIN));
+router.use(authorize(USER_ROLES.SUPER_ADMIN));
 router.use(requireKiranGrandAdmin);
+
+router.get("/sellers", listSellers);
+router.post("/sellers", createSeller);
+router.patch("/sellers/:id", patchSeller);
+router.get("/products/pending", listPendingProducts);
+router.patch("/products/:id/approval", patchProductApproval);
 
 router.get("/dashboard", getDashboard);
 router.get("/stripe-payout", getStripePayoutDashboard);
@@ -67,7 +87,13 @@ router.patch("/orders/:orderId/prescription-review", patchOrderPrescriptionRevie
 router.get("/orders/:orderId/hyperlocal-context", getOrderHyperlocalContext);
 router.patch("/orders/:orderId/delivery", patchOrderDelivery);
 router.patch("/orders/:orderId/vip-tracking", patchOrderVipTracking);
+router.patch("/orders/:orderId/shipment-tracking", patchOrderShipmentTracking);
+router.post("/orders/:id/confirm-payment", postAdminConfirmOrderPayment);
 
+router.get("/automation/logs", getAdminAutomationLogs);
+router.post("/automation/run-sync", postAdminAutomationRunSync);
+router.post("/reports/daily-profit", postAdminDailyProfitReport);
+router.get("/analytics/sales", getAdminSalesAnalytics);
 router.post("/automation/sync-stocks", async (_req, res, next) => {
   try {
     const batch = await syncAllProductStocksFromSources();

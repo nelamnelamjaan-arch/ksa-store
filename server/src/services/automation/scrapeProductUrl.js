@@ -1,28 +1,20 @@
 import { URL } from "url";
+import axios from "axios";
 import { extractFromHtmlString } from "./extractors/genericMeta.js";
 import { fetchRenderedHtml } from "./extractors/puppeteerFetcher.js";
 import { resolveDomainRules } from "./domainMap.js";
 import { flagImagesForReview } from "../../utils/imageWatermarkHeuristic.js";
-
-const DEFAULT_UA =
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
+import { buildScrapeAxiosConfig } from "./scrapeAntiBlock.js";
 
 /**
  * @param {string} url
  */
-async function fetchHtmlWithFetch(url) {
-  const res = await fetch(url, {
-    redirect: "follow",
-    headers: {
-      "User-Agent": DEFAULT_UA,
-      Accept: "text/html,application/xhtml+xml",
-      "Accept-Language": "en-US,en;q=0.9",
-    },
+async function fetchHtmlWithAxios(url) {
+  const res = await axios.get(url, {
+    ...buildScrapeAxiosConfig(url),
+    responseType: "text",
   });
-  if (!res.ok) {
-    throw new Error(`HTTP ${res.status} fetching page`);
-  }
-  return res.text();
+  return String(res.data || "");
 }
 
 function needsRichRender(partial, hostname) {
@@ -59,7 +51,7 @@ export async function scrapeProductFromUrl(url) {
   let usedPuppeteer = false;
 
   try {
-    html = await fetchHtmlWithFetch(url);
+    html = await fetchHtmlWithAxios(url);
   } catch {
     html = "";
   }
@@ -78,6 +70,8 @@ export async function scrapeProductFromUrl(url) {
 
   const { cleanUrls, flags } = flagImagesForReview(data.images);
 
+  const htmlExcerpt = String(html || "").slice(0, 120_000);
+
   return {
     title: data.title || "Imported product",
     description: data.description || "",
@@ -95,5 +89,7 @@ export async function scrapeProductFromUrl(url) {
     watermarkFlags: flags,
     usedPuppeteer,
     retailPartnerName: data.retailPartnerName || "",
+    htmlExcerpt,
+    _connector: usedPuppeteer ? "puppeteer_scrape" : "cheerio_scrape",
   };
 }

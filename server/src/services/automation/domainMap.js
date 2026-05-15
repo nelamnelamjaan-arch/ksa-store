@@ -101,12 +101,33 @@ export function resolveDomainRules(hostname) {
   }
 
   if (h.includes("daraz.")) {
+    const country = h.includes("daraz.pk") ? "PK" : h.includes("daraz.bd") ? "BD" : "PK";
     return {
       sourceType: "daraz",
-      defaultCountry: "AE",
+      defaultCountry: country,
       categorySlug: "asian-tech-gadgets",
       pricingGroup: PRICING_COUNTRY_GROUPS.UAE_SAUDI,
       connectorId: "daraz",
+    };
+  }
+
+  if (h.includes("ebay.")) {
+    return {
+      sourceType: "ebay",
+      defaultCountry: h.includes("ebay.co.uk") ? "GB" : "US",
+      categorySlug: "american-electronics",
+      pricingGroup: PRICING_COUNTRY_GROUPS.USA_EUROPE,
+      connectorId: "ebay",
+    };
+  }
+
+  if (h.includes("flipkart.")) {
+    return {
+      sourceType: "flipkart",
+      defaultCountry: "IN",
+      categorySlug: "asian-tech-gadgets",
+      pricingGroup: PRICING_COUNTRY_GROUPS.USA_EUROPE,
+      connectorId: "flipkart",
     };
   }
 
@@ -133,9 +154,47 @@ export function resolveDomainRules(hostname) {
     return {
       sourceType: "other",
       defaultCountry: "SA",
-      categorySlug: "fresh-produce",
+      categorySlug: "daily-essentials",
       pricingGroup: PRICING_COUNTRY_GROUPS.UAE_SAUDI,
       connectorId: "carrefour_sa",
+    };
+  }
+
+  /** Turkey — Daily Essentials for travelers */
+  if (h.includes("migros.com.tr") || h.includes("migros.com")) {
+    return {
+      sourceType: "other",
+      defaultCountry: "TR",
+      categorySlug: "daily-essentials",
+      pricingGroup: PRICING_COUNTRY_GROUPS.USA_EUROPE,
+      connectorId: "migros_tr",
+    };
+  }
+  if (h.includes("getir.com") || h.includes("getir.")) {
+    return {
+      sourceType: "other",
+      defaultCountry: "TR",
+      categorySlug: "daily-essentials",
+      pricingGroup: PRICING_COUNTRY_GROUPS.USA_EUROPE,
+      connectorId: "getir_tr",
+    };
+  }
+  if (h.includes("trendyol.")) {
+    return {
+      sourceType: "other",
+      defaultCountry: "TR",
+      categorySlug: "daily-essentials",
+      pricingGroup: PRICING_COUNTRY_GROUPS.USA_EUROPE,
+      connectorId: "trendyol_tr",
+    };
+  }
+  if (h.includes("carrefoursa.com") && !h.includes("saudi")) {
+    return {
+      sourceType: "other",
+      defaultCountry: "TR",
+      categorySlug: "daily-essentials",
+      pricingGroup: PRICING_COUNTRY_GROUPS.USA_EUROPE,
+      connectorId: "carrefour_tr",
     };
   }
 
