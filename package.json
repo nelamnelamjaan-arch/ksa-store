@@ -1,0 +1,16 @@
+{
+  "name": "ksa-store",
+  "private": true,
+  "version": "0.1.0",
+  "description": "KSA Store — multi-vendor dropshipping marketplace",
+  "scripts": {
+    "dev": "npm run dev --workspace=client",
+    "dev:server": "npm run dev --workspace=server",
+    "build": "npm run build --workspace=client",
+    "install:all": "npm install --workspaces"
+  },
+  "workspaces": [
+    "client",
+    "server"
+  ]
+}

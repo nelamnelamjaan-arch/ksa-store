@@ -1,0 +1,22 @@
+{
+  "name": "KSA Store",
+  "short_name": "KSA Store",
+  "description": "KSA Store — curated marketplace with VIP fulfilment.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#050508",
+  "theme_color": "#050508",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["shopping", "lifestyle"],
+  "lang": "en",
+  "dir": "ltr"
+}

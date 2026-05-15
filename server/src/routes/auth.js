@@ -1,0 +1,19 @@
+import { Router } from "express";
+import {
+  postGoogleLogin,
+  postAdminLogin,
+  getMe,
+  patchMe,
+  getFamilyNeeds,
+} from "../controllers/authController.js";
+import { requireUser } from "../middleware/auth.js";
+
+const router = Router();
+
+router.post("/google", postGoogleLogin);
+router.post("/login", postAdminLogin);
+router.get("/me", requireUser, getMe);
+router.patch("/me", requireUser, patchMe);
+router.get("/family-needs", requireUser, getFamilyNeeds);
+
+export default router;

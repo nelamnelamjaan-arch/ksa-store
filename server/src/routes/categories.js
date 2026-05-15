@@ -1,0 +1,16 @@
+import { Router } from "express";
+import { requireUser, requireRoles } from "../middleware/auth.js";
+import { USER_ROLES } from "../models/User.js";
+import {
+  listCategories,
+  createCategory,
+  getCategory,
+} from "../controllers/categoryController.js";
+
+const router = Router();
+
+router.get("/", listCategories);
+router.get("/:id", getCategory);
+router.post("/", requireUser, requireRoles(USER_ROLES.GRAND_ADMIN), createCategory);
+
+export default router;
