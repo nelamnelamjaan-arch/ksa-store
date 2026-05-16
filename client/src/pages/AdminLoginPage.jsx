@@ -40,9 +40,14 @@ export default function AdminLoginPage() {
       <Link to="/" className="text-sm text-neon-cyan hover:underline">
         ← Home
       </Link>
-      <div className="mt-8 rounded-3xl border border-white/20 bg-white/10 p-8 shadow-[0_12px_48px_rgba(0,0,0,0.45)] backdrop-blur-lg">
-        <h1 className="font-display text-2xl font-bold text-white">Super Admin</h1>
-        <p className="mt-2 text-sm text-white/55">Sign in as Kiran — full marketplace control.</p>
+      <div className="glass-panel-strong mt-8 rounded-3xl p-8">
+        <p className="text-center text-[10px] font-semibold uppercase tracking-[0.28em] text-neon-cyan/90">
+          Grand Admin
+        </p>
+        <h1 className="mt-2 text-center font-display text-2xl font-bold text-white">Super Admin</h1>
+        <p className="mt-2 text-center text-sm text-white/55">
+          Username <span className="text-white/80">Kiran</span> · frosted glass control centre
+        </p>
         <form onSubmit={onSubmit} className="mt-8 space-y-4">
           <label className="block text-xs text-white/50">
             Username

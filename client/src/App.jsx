@@ -14,6 +14,7 @@ import BrowsePage from "./pages/BrowsePage.jsx";
 import GourmetPage from "./pages/GourmetPage.jsx";
 import ProductDetailPage from "./pages/ProductDetailPage.jsx";
 import CheckoutPage from "./pages/CheckoutPage.jsx";
+import PayPalCheckoutPage from "./pages/PayPalCheckoutPage.jsx";
 import ConciergePage from "./pages/ConciergePage.jsx";
 import FamilyNeedsPage from "./pages/FamilyNeedsPage.jsx";
 import CheckoutSuccessPage from "./pages/CheckoutSuccessPage.jsx";
@@ -65,6 +66,7 @@ export default function App() {
           <Route path="family" element={<FamilyNeedsPage />} />
           <Route path="products/:id" element={<ProductDetailPage />} />
           <Route path="checkout" element={<CheckoutPage />} />
+          <Route path="checkout/paypal" element={<PayPalCheckoutPage />} />
           <Route path="checkout/success" element={<CheckoutSuccessPage />} />
           <Route path="checkout/cancel" element={<CheckoutCancelPage />} />
           <Route path="account/orders" element={<OrdersPage />} />

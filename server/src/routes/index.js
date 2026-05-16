@@ -38,7 +38,8 @@ router.get("/", (_req, res) => {
         "POST /api/checkout/stripe | /api/checkout/stripe/payment-intent (PaymentIntent + Elements) | /api/checkout/crypto (optional prescriptionUploads[] https URLs)",
       subscriptions: "GET/POST /api/subscriptions (JWT)",
       recommendations: "GET /api/products/recommendations?age_segment=adults&city=Riyadh&vertical=healthcare",
-      orders: "GET /api/orders (customer)",
+      orders:
+        "POST /api/orders (PayPal create) | POST /api/orders/:orderID/capture | GET /api/orders (customer)",
       wallet: "GET /api/wallet, POST /api/wallet/withdraw (vendor)",
       vendor: "POST /api/vendor/products/:productId/boost",
       admin:
