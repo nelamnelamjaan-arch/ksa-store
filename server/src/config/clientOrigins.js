@@ -1,4 +1,5 @@
 const DEFAULT_DEV_ORIGIN = "http://localhost:5173";
+const PRODUCTION_CLIENT_ORIGIN = "https://ksa-store-client-tjx3.vercel.app";
 
 function splitOrigins(raw) {
   if (raw == null || String(raw).trim() === "") return [];
@@ -12,6 +13,7 @@ function splitOrigins(raw) {
 export function getCorsAllowedOrigins() {
   const fromEnv = splitOrigins(process.env.CLIENT_ORIGIN);
   if (fromEnv.length) return fromEnv;
+  if (process.env.VERCEL === "1") return [PRODUCTION_CLIENT_ORIGIN];
   return [DEFAULT_DEV_ORIGIN];
 }
 

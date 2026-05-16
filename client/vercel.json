@@ -19,6 +19,10 @@
     {
       "source": "/sitemap.xml",
       "destination": "https://ksa-store-server-67sq.vercel.app/sitemap.xml"
+    },
+    {
+      "source": "/((?!api|socket\\.io|robots\\.txt|sitemap\\.xml|assets|favicon\\.svg|manifest\\.json|firebase-messaging-sw\\.js|sw\\.js).*)",
+      "destination": "/index.html"
     }
   ]
 }
