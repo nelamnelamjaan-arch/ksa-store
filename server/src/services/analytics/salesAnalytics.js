@@ -1,8 +1,8 @@
 import { Order } from "../../models/Order.js";
-import { categoryBucketLabel } from "../../utils/catalog/categoryAiPrompts.js";
 import {
   aggregateDailyProfitReport,
   resolveReportWindow,
+  categoryBucketLabel,
 } from "./dailyProfitAggregation.js";
 
 function paidMatchExpr(since, until) {

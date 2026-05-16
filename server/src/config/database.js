@@ -11,7 +11,13 @@ export async function connectDb() {
     return false;
   }
   mongoose.set("strictQuery", true);
-  await mongoose.connect(MONGODB_URI);
+  try {
+    await mongoose.connect(MONGODB_URI);
+  } catch (err) {
+    console.warn("MongoDB connection failed:", err?.message || err);
+    console.warn("API routes that need the database will fail until MONGODB_URI is valid.");
+    return false;
+  }
   console.log("MongoDB connected");
   try {
     const { ensureProductIndexes } = await import("./ensureProductIndexes.js");
