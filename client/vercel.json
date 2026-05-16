@@ -1,0 +1,24 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://ksa-store-server-67sq.vercel.app/api/:path*"
+    },
+    {
+      "source": "/socket.io",
+      "destination": "https://ksa-store-server-67sq.vercel.app/socket.io"
+    },
+    {
+      "source": "/socket.io/:path*",
+      "destination": "https://ksa-store-server-67sq.vercel.app/socket.io/:path*"
+    },
+    {
+      "source": "/robots.txt",
+      "destination": "https://ksa-store-server-67sq.vercel.app/robots.txt"
+    },
+    {
+      "source": "/sitemap.xml",
+      "destination": "https://ksa-store-server-67sq.vercel.app/sitemap.xml"
+    }
+  ]
+}

@@ -1,7 +1,8 @@
 /**
- * Production: set `VITE_API_URL` to the API origin (no trailing slash), e.g.
- * `https://ksa-store-server-67sq.vercel.app`.
- * Local dev: leave unset — `/api` stays same-origin and Vite proxies to the API.
+ * API base for fetch/socket.
+ * - Unset `VITE_API_URL`: relative `/api/...` (Vite dev proxy; Vercel client rewrites in prod).
+ * - Set `VITE_API_URL`: direct calls to that origin (no trailing slash), e.g.
+ *   `https://ksa-store-server-67sq.vercel.app` — server must allow this client in `CLIENT_ORIGIN`.
  */
 export function getApiOrigin() {
   const raw = import.meta.env.VITE_API_URL;
