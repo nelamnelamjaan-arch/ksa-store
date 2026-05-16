@@ -44,7 +44,9 @@ export default function AdminDashboardPage() {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-lg px-4 py-24 text-center text-sm text-white/45">Loading…</div>
+      <div className="flex min-h-[50vh] items-center justify-center px-4">
+        <p className="text-base font-medium text-white">Loading dashboard…</p>
+      </div>
     );
   }
 

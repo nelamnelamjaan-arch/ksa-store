@@ -36,6 +36,12 @@ import {
   postAdminDailyProfitReport,
   getAdminSalesAnalytics,
 } from "../controllers/adminController.js";
+import { postAdminRunScheduledScrape } from "../controllers/scheduledScrapeController.js";
+import { postAdminRunAiScrape } from "../controllers/aiScrapeController.js";
+import {
+  postAdminRunGlobalScrape,
+  getAdminGlobalScrapeCatalogue,
+} from "../controllers/globalScrapeController.js";
 import { syncAllProductStocksFromSources } from "../services/automation/stockSyncJob.js";
 import { postAdminConfirmOrderPayment } from "../controllers/universalCheckoutController.js";
 import {
@@ -91,6 +97,10 @@ router.patch("/orders/:orderId/shipment-tracking", patchOrderShipmentTracking);
 router.post("/orders/:id/confirm-payment", postAdminConfirmOrderPayment);
 
 router.get("/automation/logs", getAdminAutomationLogs);
+router.post("/scrape/run", postAdminRunScheduledScrape);
+router.post("/ai-scrape/run", postAdminRunAiScrape);
+router.post("/global-scrape/run", postAdminRunGlobalScrape);
+router.get("/global-scrape/catalogue", getAdminGlobalScrapeCatalogue);
 router.post("/automation/run-sync", postAdminAutomationRunSync);
 router.post("/reports/daily-profit", postAdminDailyProfitReport);
 router.get("/analytics/sales", getAdminSalesAnalytics);

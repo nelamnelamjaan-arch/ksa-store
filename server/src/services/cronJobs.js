@@ -3,6 +3,9 @@
  * - Auto-Pilot price/stock sync every 6 hours (ENABLE_CRON_AUTOPILOT=true)
  * - Top-sellers price refresh every 24h (ENABLE_CRON_TOP_SELLERS_PRICE_REFRESH=true)
  * - Daily profit report email at 23:59 (ENABLE_DAILY_PROFIT_REPORT=true)
+ * - Scheduled target scrape at midnight (ENABLE_SCRAPE_CRON=true, long-running host only)
+ * - AI Gemini scrape at midnight (ENABLE_AI_SCRAPE_CRON=true, long-running host only)
+ * - Global marketplace scrape at midnight (ENABLE_GLOBAL_SCRAPE_CRON=true, long-running host only)
  *
  * Also re-exported from server/src/utils/cronJobs.js
  */
@@ -18,6 +21,9 @@ import {
   applySourcePriceSnapshotToProduct,
 } from "./pricing/sourcePriceRefresh.js";
 import { runTopSellingPriceRefreshJob } from "./pricing/topSellingPriceRefreshJob.js";
+import { startScheduledScrapeCron } from "../jobs/scheduledScrapeCron.js";
+import { startScheduledAiScrapeCron } from "../jobs/scheduledAiScrapeCron.js";
+import { startGlobalScrapeCron } from "../jobs/globalScrapeCron.js";
 
 let scheduled = false;
 let topSellersScheduled = false;
@@ -181,6 +187,10 @@ export function startCronJobs() {
   } else if (!dailyReportScheduled) {
     console.log("[cronJobs] Daily profit report disabled (ENABLE_DAILY_PROFIT_REPORT=true)");
   }
+
+  startScheduledScrapeCron();
+  startScheduledAiScrapeCron();
+  startGlobalScrapeCron();
 }
 
 export { runDailyProfitReportJob, runTopSellingPriceRefreshJob };

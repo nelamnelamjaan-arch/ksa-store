@@ -22,7 +22,7 @@ import CheckoutCancelPage from "./pages/CheckoutCancelPage.jsx";
 import OrdersPage from "./pages/OrdersPage.jsx";
 import CookieConsent from "./components/legal/CookieConsent.jsx";
 
-const AdminLoginPage = lazy(() => import("./pages/AdminLoginPage.jsx"));
+import AdminLoginPage from "./pages/AdminLoginPage.jsx";
 const AdminCachePage = lazy(() => import("./pages/AdminCachePage.jsx"));
 const AdminDashboardPage = lazy(() => import("./pages/AdminDashboardPage.jsx"));
 const AdminStripePayoutPage = lazy(() => import("./pages/AdminStripePayoutPage.jsx"));
@@ -35,8 +35,8 @@ function AdminRouteSuspense({ children }) {
   return (
     <Suspense
       fallback={
-        <div className="mx-auto max-w-lg px-4 py-24 text-center text-sm text-white/45">
-          Loading admin…
+        <div className="flex min-h-[60vh] items-center justify-center px-4">
+          <p className="text-base font-medium text-white">Loading admin…</p>
         </div>
       }
     >
@@ -70,14 +70,7 @@ export default function App() {
           <Route path="checkout/success" element={<CheckoutSuccessPage />} />
           <Route path="checkout/cancel" element={<CheckoutCancelPage />} />
           <Route path="account/orders" element={<OrdersPage />} />
-          <Route
-            path="admin/login"
-            element={
-              <AdminRouteSuspense>
-                <AdminLoginPage />
-              </AdminRouteSuspense>
-            }
-          />
+          <Route path="admin/login" element={<AdminLoginPage />} />
           <Route
             path="admin/cache"
             element={
