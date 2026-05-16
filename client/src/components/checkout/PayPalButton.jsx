@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { loadPayPalV6Sdk, getPayPalClientId } from "../../utils/loadPayPalV6.js";
+import { apiUrl } from "../../utils/apiUrl.js";
 
 const PAYPAL_BTN_ID = "ksa-paypal-button";
 const CARD_BTN_ID = "ksa-paypal-basic-card-button";
@@ -55,7 +56,7 @@ export default function PayPalButton({
         });
 
         const createOrder = async () => {
-          const res = await fetch("/api/orders", {
+          const res = await fetch(apiUrl("/api/orders"), {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ amount: Number(amount), currency }),
@@ -67,7 +68,7 @@ export default function PayPalButton({
 
         const captureOrder = async (orderId) => {
           const res = await fetch(
-            `/api/orders/${encodeURIComponent(orderId)}/capture`,
+            apiUrl(`/api/orders/${encodeURIComponent(orderId)}/capture`),
             { method: "POST", headers: { "Content-Type": "application/json" } }
           );
           const data = await res.json().catch(() => ({}));

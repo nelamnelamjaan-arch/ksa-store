@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { productPath } from "../../utils/productLink.js";
+import { apiUrl } from "../../utils/apiUrl.js";
 
 export default function VisualSearchPanel() {
   const [file, setFile] = useState(null);
@@ -19,7 +20,7 @@ export default function VisualSearchPanel() {
     try {
       const fd = new FormData();
       fd.append("image", file);
-      const res = await fetch("/api/search/visual", {
+      const res = await fetch(apiUrl("/api/search/visual"), {
         method: "POST",
         body: fd,
       });

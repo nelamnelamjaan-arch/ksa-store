@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import { useAuth } from "../../context/AuthContext.jsx";
+import { apiUrl } from "../../utils/apiUrl.js";
 
 const LS_KEY = "ksa_quick_address_v1";
 
@@ -32,7 +33,7 @@ export default function QuickBuyWallet({ shopId, productId, quantity = 1 }) {
 
     setBusy(true);
     try {
-      const res = await fetch("/api/checkout/stripe/payment-intent", {
+      const res = await fetch(apiUrl("/api/checkout/stripe/payment-intent"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

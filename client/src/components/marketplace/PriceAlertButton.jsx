@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { getFcmDeviceToken } from "../../lib/fcmRegister.js";
+import { apiUrl } from "../../utils/apiUrl.js";
 
 export default function PriceAlertButton({ productId }) {
   const { token } = useAuth();
@@ -22,7 +23,7 @@ export default function PriceAlertButton({ productId }) {
         );
         return;
       }
-      const res = await fetch("/api/alerts/price-watch", {
+      const res = await fetch(apiUrl("/api/alerts/price-watch"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

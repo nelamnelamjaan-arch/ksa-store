@@ -6,6 +6,7 @@ import CountrySwitcher from "./CountrySwitcher.jsx";
 import LocationBadge from "./LocationBadge.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { isKiranGrandAdmin } from "../../utils/kiranAdmin.js";
+import { apiUrl } from "../../utils/apiUrl.js";
 
 const navLinks = [
   { label: "Discover", to: "/" },
@@ -47,7 +48,7 @@ export default function Navbar() {
     const credential = credentialResponse.credential;
     if (!credential) return;
     try {
-      const res = await fetch("/api/auth/google", {
+      const res = await fetch(apiUrl("/api/auth/google"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ credential }),

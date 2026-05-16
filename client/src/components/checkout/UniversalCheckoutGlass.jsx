@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { useCurrency } from "../../context/CurrencyContext.jsx";
 import FacilitatorNote from "../legal/FacilitatorNote.jsx";
 import TrustBadges from "../trust/TrustBadges.jsx";
+import { apiUrl } from "../../utils/apiUrl.js";
 
 const STAGES = [
   { key: "fetch", label: "Fetching Data…" },
@@ -69,7 +70,7 @@ export default function UniversalCheckoutGlass({
   );
 
   useEffect(() => {
-    fetch("/api/checkout/config")
+    fetch(apiUrl("/api/checkout/config"))
       .then((r) => r.json())
       .then(setConfig)
       .catch(() => {});
@@ -85,7 +86,7 @@ export default function UniversalCheckoutGlass({
   }
 
   async function createOrder(paymentMethod) {
-    const res = await fetch("/api/checkout/universal", {
+    const res = await fetch(apiUrl("/api/checkout/universal"), {
       method: "POST",
       headers: { "Content-Type": "application/json", ...authHeaders() },
       body: JSON.stringify({
@@ -134,7 +135,7 @@ export default function UniversalCheckoutGlass({
         const payCur = config?.paypalCurrency || "USD";
         const paypal = await loadPayPalScript(clientId, payCur);
 
-        const createRes = await fetch("/api/checkout/paypal/create", {
+        const createRes = await fetch(apiUrl("/api/checkout/paypal/create"), {
           method: "POST",
           headers: { "Content-Type": "application/json", ...authHeaders() },
           body: JSON.stringify({ orderId: json.orderId }),
@@ -146,7 +147,7 @@ export default function UniversalCheckoutGlass({
         await paypal.Buttons({
           createOrder: () => ppJson.paypalOrderId,
           onApprove: async (data) => {
-            const cap = await fetch("/api/checkout/split-payment/capture", {
+            const cap = await fetch(apiUrl("/api/checkout/split-payment/capture"), {
               method: "POST",
               headers: { "Content-Type": "application/json", ...authHeaders() },
               body: JSON.stringify({
@@ -176,7 +177,7 @@ export default function UniversalCheckoutGlass({
         fd.append("orderId", json.orderId);
         fd.append("bankReference", bankRef);
         fd.append("receipt", receiptFile);
-        const up = await fetch("/api/checkout/bank-transfer", {
+        const up = await fetch(apiUrl("/api/checkout/bank-transfer"), {
           method: "POST",
           headers: authHeaders(),
           body: fd,

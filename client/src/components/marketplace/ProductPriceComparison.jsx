@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { sourceMeta } from "./SourceBadge.jsx";
+import { apiUrl } from "../../utils/apiUrl.js";
 
 function formatSar(n) {
   if (n == null || Number.isNaN(Number(n))) return "—";
@@ -21,7 +22,7 @@ export default function ProductPriceComparison({ productId, enabled = true }) {
       setLoading(true);
       setErr("");
       try {
-        const res = await fetch(`/api/scraper/compare/${encodeURIComponent(productId)}`);
+        const res = await fetch(apiUrl(`/api/scraper/compare/${encodeURIComponent(productId)}`));
         const json = await res.json().catch(() => ({}));
         if (!res.ok) {
           if (!cancelled) setErr(json.message || "Could not load comparison");
