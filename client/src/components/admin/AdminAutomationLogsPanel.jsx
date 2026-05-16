@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import { apiUrl } from "../../utils/apiUrl.js";
 
 function StatusPill({ ok, label }) {
   return (
@@ -37,7 +38,7 @@ export default function AdminAutomationLogsPanel({ token }) {
   const load = useCallback(async () => {
     setErr("");
     try {
-      const res = await fetch("/api/admin/automation/logs?limit=60", {
+      const res = await fetch(apiUrl("/api/admin/automation/logs?limit=60"), {
         headers: { Authorization: `Bearer ${token}` },
       });
       const json = await res.json().catch(() => ({}));
@@ -63,7 +64,7 @@ export default function AdminAutomationLogsPanel({ token }) {
     setRunning(true);
     setErr("");
     try {
-      const res = await fetch("/api/admin/automation/run-sync", {
+      const res = await fetch(apiUrl("/api/admin/automation/run-sync"), {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       });

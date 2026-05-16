@@ -25,6 +25,7 @@ import {
   isGroceryFreshnessCategory,
   resolveShelfLifeHours,
 } from "../utils/catalogFreshness.js";
+import { apiUrl } from "../utils/apiUrl.js";
 
 export default function ProductDetailPage() {
   const { id } = useParams();
@@ -41,7 +42,7 @@ export default function ProductDetailPage() {
       setLoading(true);
       setErr("");
       try {
-        const res = await fetch(`/api/products/${encodeURIComponent(id)}`);
+        const res = await fetch(apiUrl(`/api/products/${encodeURIComponent(id)}`));
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
           if (!cancelled) setErr(data.message || "Product not found");
@@ -67,7 +68,7 @@ export default function ProductDetailPage() {
     }
     (async () => {
       try {
-        const res = await fetch(`/api/products/${encodeURIComponent(id)}/local-alternatives`);
+        const res = await fetch(apiUrl(`/api/products/${encodeURIComponent(id)}/local-alternatives`));
         const data = await res.json().catch(() => ({}));
         if (!cancelled) setLocals(Array.isArray(data.alternatives) ? data.alternatives : []);
       } catch {

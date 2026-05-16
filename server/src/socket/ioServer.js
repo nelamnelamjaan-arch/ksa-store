@@ -2,6 +2,7 @@ import { Server } from "socket.io";
 import { createClient } from "redis";
 import { verifyAuthToken } from "../services/auth/jwt.js";
 import { MAGIC_IMPORT_PROGRESS_CHANNEL } from "../services/jobs/magicImportProgressBus.js";
+import { getCorsAllowedOrigins } from "../config/clientOrigins.js";
 
 /**
  * @param {import("http").Server} httpServer
@@ -9,7 +10,7 @@ import { MAGIC_IMPORT_PROGRESS_CHANNEL } from "../services/jobs/magicImportProgr
 export function attachSocketIo(httpServer) {
   const io = new Server(httpServer, {
     cors: {
-      origin: process.env.CLIENT_ORIGIN || "http://localhost:5173",
+      origin: getCorsAllowedOrigins(),
       methods: ["GET", "POST"],
       credentials: true,
     },

@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "react-router-dom";
+import { apiUrl } from "../../utils/apiUrl.js";
 
 /**
  * Universal Magic Import — any product URL.
@@ -43,7 +43,7 @@ export default function MagicAmazonImportPanel({
     }, 450);
 
     try {
-      const res = await fetch(importEndpoint, {
+      const res = await fetch(apiUrl(importEndpoint), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

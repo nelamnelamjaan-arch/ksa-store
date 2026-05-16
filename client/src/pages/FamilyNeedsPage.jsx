@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { productPath } from "../utils/productLink.js";
 import { useAuth } from "../context/AuthContext.jsx";
+import { apiUrl } from "../utils/apiUrl.js";
 
 const emptyMember = () => ({
   relationship: "child",
@@ -43,7 +44,7 @@ export default function FamilyNeedsPage() {
     if (!token) return;
     setMsg("");
     try {
-      const res = await fetch("/api/auth/family-needs", { headers });
+      const res = await fetch(apiUrl("/api/auth/family-needs"), { headers });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setMsg(data.message || "Could not load recommendations");
@@ -76,7 +77,7 @@ export default function FamilyNeedsPage() {
         }))
         .filter((r) => r.display_name || r.date_of_birth || r.age_years != null);
 
-      const res = await fetch("/api/auth/me", {
+      const res = await fetch(apiUrl("/api/auth/me"), {
         method: "PATCH",
         headers,
         body: JSON.stringify({ family_members }),

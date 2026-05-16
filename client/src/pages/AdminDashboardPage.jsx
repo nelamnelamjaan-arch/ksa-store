@@ -9,6 +9,7 @@ import AdminPendingInventoryPanel from "../components/admin/AdminPendingInventor
 import AdminAutomationLogsPanel from "../components/admin/AdminAutomationLogsPanel.jsx";
 import AdminSalesAnalyticsPanel from "../components/admin/AdminSalesAnalyticsPanel.jsx";
 import SourceVendorBadge from "../components/legal/SourceVendorBadge.jsx";
+import { apiUrl } from "../utils/apiUrl.js";
 
 export default function AdminDashboardPage() {
   const { token, user, loading } = useAuth();
@@ -23,7 +24,7 @@ export default function AdminDashboardPage() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch("/api/admin/dashboard", {
+        const res = await fetch(apiUrl("/api/admin/dashboard"), {
           headers: { Authorization: `Bearer ${token}` },
         });
         const json = await res.json().catch(() => ({}));

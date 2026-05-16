@@ -1,7 +1,8 @@
 import { buildRobotsTxt, buildSitemapXml } from "../services/seo/sitemapRobots.js";
+import { getPrimaryClientOrigin } from "../config/clientOrigins.js";
 
 function siteOrigin(req) {
-  const env = process.env.PUBLIC_SITE_URL || process.env.CLIENT_ORIGIN;
+  const env = process.env.PUBLIC_SITE_URL || getPrimaryClientOrigin();
   if (env) return String(env).replace(/\/$/, "");
   const proto = req.get("x-forwarded-proto") || req.protocol || "http";
   const host = req.get("x-forwarded-host") || req.get("host") || "localhost:5173";

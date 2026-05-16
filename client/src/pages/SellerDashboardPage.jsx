@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { useCurrency } from "../context/CurrencyContext.jsx";
 import { isApprovedSeller } from "../utils/sellerAccess.js";
 import MagicAmazonImportPanel from "../components/admin/MagicAmazonImportPanel.jsx";
+import { apiUrl } from "../utils/apiUrl.js";
 
 export default function SellerDashboardPage() {
   const { token, user, loading } = useAuth();
@@ -16,7 +17,7 @@ export default function SellerDashboardPage() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch("/api/seller/dashboard", {
+        const res = await fetch(apiUrl("/api/seller/dashboard"), {
           headers: { Authorization: `Bearer ${token}` },
         });
         const json = await res.json().catch(() => ({}));

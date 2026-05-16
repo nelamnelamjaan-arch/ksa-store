@@ -1,6 +1,7 @@
 import { buildMailTransport, escapeHtml, mailFromAddress } from "./mailTransport.js";
 import { DEFAULT_PROFIT_RECEIVER } from "../payments/profitSplitService.js";
 import { appendAutomationLog } from "../automation/automationLog.js";
+import { getPrimaryClientOrigin } from "../../config/clientOrigins.js";
 
 function reportRecipient() {
   return (
@@ -17,9 +18,7 @@ function reportCc() {
 
 function adminDashboardUrl() {
   const base =
-    process.env.ADMIN_DASHBOARD_URL ||
-    process.env.CLIENT_ORIGIN ||
-    "http://localhost:5173";
+    process.env.ADMIN_DASHBOARD_URL || process.env.PUBLIC_SITE_URL || getPrimaryClientOrigin();
   return `${String(base).replace(/\/$/, "")}/admin/dashboard`;
 }
 

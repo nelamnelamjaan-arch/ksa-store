@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import ProductCard from "../components/ui/ProductCard.jsx";
 import { productPath } from "../utils/productLink.js";
+import { apiUrl } from "../utils/apiUrl.js";
 
 export default function GourmetPage() {
   const [products, setProducts] = useState([]);
@@ -13,7 +14,7 @@ export default function GourmetPage() {
     (async () => {
       setLoading(true);
       try {
-        const res = await fetch("/api/products?vertical=gourmet_food&limit=48");
+        const res = await fetch(apiUrl("/api/products?vertical=gourmet_food&limit=48"));
         const data = await res.json().catch(() => []);
         if (!cancelled) setProducts(Array.isArray(data) ? data : []);
       } catch {

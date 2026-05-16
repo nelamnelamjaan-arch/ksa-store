@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { PriceWatchSubscription } from "../../models/PriceWatchSubscription.js";
 import { sendPriceDropMulticast } from "./fcmPriceAlerts.js";
+import { getPrimaryClientOrigin } from "../../config/clientOrigins.js";
 
 /**
  * If KSA list price drops ≥5% vs previous scrape, notify all active watchers.
@@ -27,7 +28,7 @@ export async function firePriceDropAlerts(productId, snap) {
   const title = "Price drop on your watchlist";
   const body = `${snap.title}: ${oldKsa.toFixed(2)} → ${newKsa.toFixed(2)} SAR (−${(dropPct * 100).toFixed(1)}%)`;
 
-  const base = process.env.CLIENT_ORIGIN || "http://localhost:5173";
+  const base = process.env.PUBLIC_SITE_URL || getPrimaryClientOrigin();
   const url = `${base.replace(/\/$/, "")}/products/${String(productId)}`;
 
   const r = await sendPriceDropMulticast({

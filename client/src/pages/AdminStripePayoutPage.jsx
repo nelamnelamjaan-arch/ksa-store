@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import { isKiranGrandAdmin } from "../utils/kiranAdmin.js";
+import { apiUrl } from "../utils/apiUrl.js";
 
 function minorToMajor(amount, currency) {
   const c = String(currency || "usd").toLowerCase();
@@ -21,7 +22,7 @@ export default function AdminStripePayoutPage() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch("/api/admin/stripe-payout", {
+        const res = await fetch(apiUrl("/api/admin/stripe-payout"), {
           headers: { Authorization: `Bearer ${token}` },
         });
         const json = await res.json().catch(() => ({}));

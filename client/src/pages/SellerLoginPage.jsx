@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
+import { apiUrl } from "../utils/apiUrl.js";
 
 export default function SellerLoginPage() {
   const { setToken, refreshMe } = useAuth();
@@ -15,7 +16,7 @@ export default function SellerLoginPage() {
     setErr("");
     setBusy(true);
     try {
-      const res = await fetch("/api/auth/seller-login", {
+      const res = await fetch(apiUrl("/api/auth/seller-login"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username: username.trim(), password }),

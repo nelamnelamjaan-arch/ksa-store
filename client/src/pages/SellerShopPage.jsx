@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { apiUrl } from "../utils/apiUrl.js";
 
 export default function SellerShopPage() {
   const { slug } = useParams();
@@ -13,7 +14,7 @@ export default function SellerShopPage() {
       setLoading(true);
       setErr("");
       try {
-        const res = await fetch(`/api/shops/${encodeURIComponent(slug || "")}`);
+        const res = await fetch(apiUrl(`/api/shops/${encodeURIComponent(slug || "")}`));
         const json = await res.json().catch(() => ({}));
         if (!res.ok) {
           if (!cancelled) setErr(json.message || "Shop not found");

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { PRODUCT_STATUSES } from "../../constants/userRoles.js";
+import { apiUrl } from "../../utils/apiUrl.js";
 
 function StatusBadge({ status }) {
   if (status === PRODUCT_STATUSES.APPROVED) {
@@ -34,7 +35,7 @@ export default function AdminPendingInventoryPanel({ token }) {
     setLoading(true);
     setErr("");
     try {
-      const res = await fetch("/api/admin/products/pending?status=pending", {
+      const res = await fetch(apiUrl("/api/admin/products/pending?status=pending"), {
         headers: { Authorization: `Bearer ${token}` },
       });
       const json = await res.json().catch(() => ({}));
@@ -57,7 +58,7 @@ export default function AdminPendingInventoryPanel({ token }) {
   async function setApproval(id, status) {
     setErr("");
     try {
-      const res = await fetch(`/api/admin/products/${id}/approval`, {
+      const res = await fetch(apiUrl(`/api/admin/products/${id}/approval`), {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",

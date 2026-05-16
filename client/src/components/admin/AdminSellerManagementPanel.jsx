@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import { apiUrl } from "../../utils/apiUrl.js";
 
 const STATUS_OPTIONS = [
   { value: true, label: "Approve" },
@@ -26,7 +27,7 @@ export default function AdminSellerManagementPanel({ token }) {
     setLoading(true);
     setErr("");
     try {
-      const res = await fetch("/api/admin/sellers", {
+      const res = await fetch(apiUrl("/api/admin/sellers"), {
         headers: { Authorization: `Bearer ${token}` },
       });
       const json = await res.json().catch(() => ({}));
@@ -51,7 +52,7 @@ export default function AdminSellerManagementPanel({ token }) {
     setBusy(true);
     setErr("");
     try {
-      const res = await fetch("/api/admin/sellers", {
+      const res = await fetch(apiUrl("/api/admin/sellers"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -76,7 +77,7 @@ export default function AdminSellerManagementPanel({ token }) {
   async function patchStatus(id, isApproved) {
     setErr("");
     try {
-      const res = await fetch(`/api/admin/sellers/${id}`, {
+      const res = await fetch(apiUrl(`/api/admin/sellers/${id}`), {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",

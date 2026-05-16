@@ -4,13 +4,11 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { connectDb } from "../config/database.js";
 import { buildSitemapXml } from "../services/seo/sitemapRobots.js";
+import { getPrimaryClientOrigin } from "../config/clientOrigins.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const site = (process.env.PUBLIC_SITE_URL || process.env.CLIENT_ORIGIN || "http://localhost:5173").replace(
-  /\/$/,
-  ""
-);
+const site = (process.env.PUBLIC_SITE_URL || getPrimaryClientOrigin()).replace(/\/$/, "");
 const out =
   process.env.SITEMAP_OUTPUT || path.join(path.resolve(__dirname, "../../.."), "sitemap-static.xml");
 

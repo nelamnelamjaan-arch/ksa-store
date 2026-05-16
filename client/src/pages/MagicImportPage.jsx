@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { io } from "socket.io-client";
 import { useAuth } from "../context/AuthContext.jsx";
 import { isKiranGrandAdmin } from "../utils/kiranAdmin.js";
+import { apiUrl, getSocketRoot } from "../utils/apiUrl.js";
 
 const STEPS = [
   "Fetching Data…",
@@ -53,7 +54,7 @@ export default function MagicImportPage() {
   const loadInventory = useCallback(async () => {
     setInventoryLoading(true);
     try {
-      const res = await fetch("/api/admin/magic-import/inventory?limit=200", { headers: authHeaders });
+      const res = await fetch(apiUrl("/api/admin/magic-import/inventory?limit=200"), { headers: authHeaders });
       const data = await res.json().catch(() => ({}));
       if (res.ok) setInventory(data.items || []);
     } catch {
@@ -65,7 +66,7 @@ export default function MagicImportPage() {
 
   const loadSettings = useCallback(async () => {
     try {
-      const res = await fetch("/api/admin/settings", { headers: authHeaders });
+      const res = await fetch(apiUrl("/api/admin/settings"), { headers: authHeaders });
       const data = await res.json().catch(() => ({}));
       if (res.ok && data.defaultImportShopId) {
         setDefaultShopId(String(data.defaultImportShopId));
@@ -107,7 +108,7 @@ export default function MagicImportPage() {
     setLoading(true);
     setStepIdx(0);
     try {
-      const res = await fetch("/api/admin/magic-import/preview", {
+      const res = await fetch(apiUrl("/api/admin/magic-import/preview"), {
         method: "POST",
         headers: authHeaders,
         body: JSON.stringify({ url: url.trim() }),
@@ -145,7 +146,7 @@ export default function MagicImportPage() {
     socketRef.current?.disconnect();
     socketRef.current = null;
     try {
-      const res = await fetch("/api/admin/magic-import/preview-async", {
+      const res = await fetch(apiUrl("/api/admin/magic-import/preview-async"), {
         method: "POST",
         headers: authHeaders,
         body: JSON.stringify({ url: url.trim() }),
@@ -159,7 +160,7 @@ export default function MagicImportPage() {
       const jobId = data.jobId;
       setBgJobId(jobId);
 
-      const socketRoot = import.meta.env.VITE_SOCKET_URL || window.location.origin;
+      const socketRoot = getSocketRoot();
       const socket = io(socketRoot, {
         path: "/socket.io",
         transports: ["websocket"],
@@ -217,7 +218,7 @@ export default function MagicImportPage() {
         categoryId: editCategoryId || undefined,
         isActive: editActive,
       };
-      const res = await fetch("/api/admin/magic-import/commit", {
+      const res = await fetch(apiUrl("/api/admin/magic-import/commit"), {
         method: "POST",
         headers: authHeaders,
         body: JSON.stringify({
@@ -246,7 +247,7 @@ export default function MagicImportPage() {
     setSyncResult(null);
     setError("");
     try {
-      const res = await fetch("/api/admin/magic-import/sync-prices", {
+      const res = await fetch(apiUrl("/api/admin/magic-import/sync-prices"), {
         method: "POST",
         headers: authHeaders,
         body: JSON.stringify({ limit: 40 }),
@@ -267,7 +268,7 @@ export default function MagicImportPage() {
 
   async function toggleRowActive(row, nextActive) {
     try {
-      await fetch(`/api/admin/magic-import/products/${row.id}`, {
+      await fetch(apiUrl(`/api/admin/magic-import/products/${row.id}`), {
         method: "PATCH",
         headers: authHeaders,
         body: JSON.stringify({ isActive: nextActive }),

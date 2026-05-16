@@ -12,6 +12,7 @@
 
 import fs from "fs";
 import admin from "firebase-admin";
+import { getPrimaryClientOrigin } from "../../config/clientOrigins.js";
 
 let initialized = false;
 
@@ -72,7 +73,7 @@ export async function sendPriceDropMulticast(payload) {
     data,
     webpush: {
       fcmOptions: {
-        link: data.url || process.env.CLIENT_ORIGIN || "http://localhost:5173",
+        link: data.url || process.env.PUBLIC_SITE_URL || getPrimaryClientOrigin(),
       },
     },
   });

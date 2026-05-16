@@ -6,6 +6,7 @@ import FacilitatorNote from "../components/legal/FacilitatorNote.jsx";
 import StripeGlassCheckoutForm from "../components/checkout/StripeGlassCheckoutForm.jsx";
 import UniversalCheckoutGlass from "../components/checkout/UniversalCheckoutGlass.jsx";
 import TrustBadges from "../components/trust/TrustBadges.jsx";
+import { apiUrl } from "../utils/apiUrl.js";
 
 const emptyAddress = {
   fullName: "",
@@ -79,7 +80,7 @@ export default function CheckoutPage() {
           phone: address.phone || "",
         })
       );
-      const res = await fetch("/api/checkout/stripe", {
+      const res = await fetch(apiUrl("/api/checkout/stripe"), {
         method: "POST",
         headers: authHeaders,
         body: JSON.stringify({
@@ -143,7 +144,7 @@ export default function CheckoutPage() {
           phone: address.phone || "",
         })
       );
-      const res = await fetch("/api/checkout/stripe/payment-intent", {
+      const res = await fetch(apiUrl("/api/checkout/stripe/payment-intent"), {
         method: "POST",
         headers: authHeaders,
         body: JSON.stringify({

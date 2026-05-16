@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { apiUrl } from "../utils/apiUrl.js";
 
 const STORAGE_KEY = "ksa_store_token";
 
@@ -28,7 +29,7 @@ export function AuthProvider({ children }) {
     }
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/me", {
+      const res = await fetch(apiUrl("/api/auth/me"), {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) {

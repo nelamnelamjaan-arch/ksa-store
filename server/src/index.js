@@ -18,12 +18,13 @@ import { attachSocketIo } from "./socket/ioServer.js";
 import { registerHourlyProductSyncJob } from "./queues/productQueues.js";
 import { createKsaBullWorkers } from "./workers/productSync.processor.js";
 import { sendRobotsTxt, sendSitemapXml } from "./controllers/seoPublicController.js";
+import { getCorsAllowedOrigins } from "./config/clientOrigins.js";
 
 const app = express();
 const httpServer = createServer(app);
 const PORT = process.env.PORT || 5000;
 
-app.use(cors({ origin: process.env.CLIENT_ORIGIN || "http://localhost:5173" }));
+app.use(cors({ origin: getCorsAllowedOrigins() }));
 
 app.get("/robots.txt", sendRobotsTxt);
 app.get("/sitemap.xml", sendSitemapXml);

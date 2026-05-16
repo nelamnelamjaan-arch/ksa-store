@@ -1,4 +1,5 @@
 import { STOREFRONT_OVERRIDE_KEY } from "../i18n/config.js";
+import { apiUrl } from "./apiUrl.js";
 
 export function readStorefrontOverride() {
   try {
@@ -31,6 +32,8 @@ export function storefrontHeaders(extra = {}) {
 }
 
 export function geoFetch(url, options = {}) {
+  const resolved =
+    typeof url === "string" && url.startsWith("/") ? apiUrl(url) : url;
   const headers = storefrontHeaders(options.headers || {});
-  return fetch(url, { ...options, headers });
+  return fetch(resolved, { ...options, headers });
 }

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
+import { apiUrl } from "../utils/apiUrl.js";
 
 export default function AdminCachePage() {
   const { token, user } = useAuth();
@@ -11,7 +12,7 @@ export default function AdminCachePage() {
     setMsg("");
     setBusy(true);
     try {
-      const res = await fetch("/api/admin/cache/clear", {
+      const res = await fetch(apiUrl("/api/admin/cache/clear"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

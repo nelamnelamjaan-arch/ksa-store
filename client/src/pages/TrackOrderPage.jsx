@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link, useParams } from "react-router-dom";
+import { apiUrl } from "../utils/apiUrl.js";
 
 function formatTime(iso) {
   if (!iso) return "";
@@ -126,7 +127,7 @@ export default function TrackOrderPage() {
     setErr("");
     setLoading(true);
     try {
-      const res = await fetch(url);
+      const res = await fetch(url.startsWith("/") ? apiUrl(url) : url);
       const json = await res.json();
       if (!res.ok) throw new Error(json.message || "Tracking lookup failed");
       setData(json);

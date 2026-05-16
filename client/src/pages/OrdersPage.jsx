@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import SourceVendorBadge from "../components/legal/SourceVendorBadge.jsx";
 import OrderVipTrackingBar from "../components/orders/OrderVipTrackingBar.jsx";
+import { apiUrl } from "../utils/apiUrl.js";
 
 export default function OrdersPage() {
   const { token, user } = useAuth();
@@ -14,7 +15,7 @@ export default function OrdersPage() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch("/api/orders", {
+        const res = await fetch(apiUrl("/api/orders"), {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json().catch(() => []);

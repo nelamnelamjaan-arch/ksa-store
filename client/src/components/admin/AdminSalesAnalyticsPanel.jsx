@@ -11,6 +11,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { chartColorForLabel } from "../../utils/productCategoryUi.js";
+import { apiUrl } from "../../utils/apiUrl.js";
 
 function StatCard({ label, value, sub, accent = "cyan" }) {
   const ring =
@@ -43,7 +44,7 @@ export default function AdminSalesAnalyticsPanel({ token }) {
     setLoading(true);
     setErr("");
     try {
-      const res = await fetch("/api/admin/analytics/sales", {
+      const res = await fetch(apiUrl("/api/admin/analytics/sales"), {
         headers: { Authorization: `Bearer ${token}` },
       });
       const json = await res.json().catch(() => ({}));

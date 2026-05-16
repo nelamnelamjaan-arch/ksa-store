@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { productPath } from "../utils/productLink.js";
 import { useAuth } from "../context/AuthContext.jsx";
+import { apiUrl } from "../utils/apiUrl.js";
 
 export default function ConciergePage() {
   const { token, user } = useAuth();
@@ -31,7 +32,7 @@ export default function ConciergePage() {
     setInput("");
     setBusy(true);
     try {
-      const res = await fetch("/api/concierge/chat", {
+      const res = await fetch(apiUrl("/api/concierge/chat"), {
         method: "POST",
         headers,
         body: JSON.stringify({ messages: nextMsgs }),
